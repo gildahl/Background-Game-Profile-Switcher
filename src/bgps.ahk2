@@ -1,0 +1,335 @@
+/************************************************************************
+ * @description Background Game Profile Switcher (BGPS)
+ * @file bgps.ahk2
+ * @author © 2025 David G. Dahlstrom
+ * @date 2025/07/13
+ * @version 0.1.0.0
+ ***********************************************************************/
+
+/***********************************************************************
+* Compiler directives
+************************************************************************/
+global CodeVersion := "0.1.0.0"
+;@Ahk2Exe-Let version = %A_PriorLine~U)^(.+"){1}(.+)".*$~$2%
+;@Ahk2Exe-SetCopyright © 2025 David G. Dahlstrom
+;@Ahk2Exe-SetProductName Background Game Profile Switcher (BGPS)
+;@Ahk2Exe-SetDescription Background Game Profile Switcher (BGPS)
+;@Ahk2Exe-SetProductVersion %U_version% beta
+;@Ahk2Exe-SetFileVersion %U_version%
+;***********************************************************************
+
+#Requires AutoHotkey v2.0
+
+#include Menu.ahk2
+#include Voice.ahk2
+#include SDL2.ahk2
+#include JSON.ahk
+#include Settings.ahk2
+#include WatchFolder-v2.ahk2
+#include ReadListXML.ahk2
+
+TraySetIcon "joystick.ico"
+
+OnMessage(WM_MOUSEMOVE  := 0x0200, OnMouseEvent)
+OnMessage(WM_MOUSELEAVE := 0x02A3, OnMouseEvent)
+
+global SDL2 := SDL2DLL() ;SDL library for game device discovery and polling
+global oVoice := voice_class() ;initialize speech support
+
+global nScreenWidth := A_ScreenWidth
+global nScreenHeight := A_ScreenHeight
+global nButtonWidth := 80
+
+global sConfigFile := A_ScriptDir "\bgps.json"
+global sTemplatesFile := A_ScriptDir "\templates.json"
+global sIniFile := A_ScriptDir "\bgps.ini"
+global sGamesXMLFile := A_ScriptDir "\games.xml"
+
+Menu_Build()  ;Build tray menu
+
+Settings_BuildScreen()
+Settings_InitGameDevices()
+Settings_ReadTemplates()
+Settings_ReadConfig()
+Settings_FillRomList()
+
+RomWatcher()
+PollControllers()
+
+/**
+ * Initialize the ROM folder watcher. This monitors all the *.zip rom files in the folder for
+ * changes to the last access timestamp. These detections raise a notification that inform
+ * what game has just been loaded.
+ */
+RomWatcher()
+{
+	try	attrib := DirExist(gcROMMonitorFolderEdit.Text)  
+	
+	if (attrib)
+	{
+		;Ensure all rom files have a last-accessed date/time of a week ago.  This is to address
+		;a Windows deficiency in which the last-access date/time of files is not updated if the file
+		;was previously accessed within the last hour or so (or sometimes since the last boot), so
+		;we want them to look sufficiently old to force Windows to set the access timestamp that will
+		;trigger our notification.
+		FileSetTime DateAdd(A_Now, -7, "days"), gcROMMonitorFolderEdit.Text "\*.zip", "A"
+
+		;Register the folder whose files will be monitored for being accessed. 32 watches for changes
+		;to the file access timestamp, and will notify FileAccess_Callback() when such detections are made.
+		WatchFolder(gcROMMonitorFolderEdit.Text, FileAccess_Callback, False, 32)
+	}
+}
+
+/**
+ * Callback function called by the WatchFolder folder/file monitor
+ * @param Folder - The folder in which a change was detected
+ * @param Changes - The specific changes detected, including the name of the file accessed.
+ */
+FileAccess_Callback(Folder, Changes) 
+{
+	static tLastTickCount := 0
+    static tLastFileName := ""
+
+	For Key, Change In Changes {
+		sROMFile := Change.HasOwnProp("Name") ? Change.Name : ""
+	}
+
+	if (tLastFileName && tLastTickCount)
+    {
+		;Changing the last-accessed timestamp below will trigger an extra notification.
+		;So do this check to ignore it.
+        if (sROMFile == tLastFileName && A_TickCount - tLastTickCount < 5000)
+            return
+    }
+            
+	;Force the last access timestamp to a week ago. This is to overcome an issue in which
+	;Windows does not natively update this timestamp if it is too recent, so lets make it look old so it does.
+	FileSetTime DateAdd(A_Now, -7, "days"), sROMFile, "A"
+
+	tLastTickCount := A_TickCount
+	tLastFileName := sROMFile
+
+	mIndexer := Map()
+	SplitPath(sROMFile,,,, &OutNameNoExt)
+	oAction := GetAction("ROM Monitor", OutNameNoExt, mIndexer)
+	RunAction(oAction)
+}
+
+/**
+ * Handle controller button presses. Uses SDL2 methods that are 
+ * improvements over native AHK, thanks to these sources:
+ * https://www.autohotkey.com/boards/viewtopic.php?t=115995
+ * https://wiki.libsdl.org/SDL2/APIByCategory
+ */
+PollControllers()
+{
+	global bCancelPoll
+
+	;Register hotkeys
+	for device, buttons in oConfig
+	{
+		for button, sequences in buttons
+		{
+			if (device == "Keyboard")
+				Hotkey(button, PressedKey_Callback, "On")
+		}
+	}
+
+	;AHK doesn't support union, need Buffer to receive SDL_Event
+    evtBuffer := Buffer(56,0)
+
+	;purge the buffer
+	SDL2.SDL_PumpEvents()
+	SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
+   
+	mIndexer := Map()
+
+    ;Handle the SDL_Event
+    loop
+    {
+       PollEvent := SDL2.SDL_PollEvent(evtBuffer)
+       evt := SDL2DLL.SDL_Event(evtBuffer)
+
+	   if (bCancelPoll)
+	   {
+			;unregister hotkeys
+			for device, buttons in oConfig
+			{
+				for button, sequences in buttons
+				{
+					if (device == "Keyboard")
+						Hotkey(button, PressedKey_Callback, "Off")
+				}
+			}
+
+			bCancelPoll := false
+			break
+	   }
+    
+       if (PollEvent)
+       {
+			if (evt.type == SDL_EventType.SDL_QUIT) ; Close evt
+			{
+				SDL2.SDL_Quit()		 
+			}
+			else if (evt.type == SDL_EventType.SDL_JOYBUTTONDOWN) ;, SDL_EventType.SDL_JOYBUTTONUP: ; Joy button evt
+			{
+				oAction := GetAction(aDevices[mDeviceIndex[evt.jbutton.which]], evt.jbutton.button, mIndexer)
+				SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)				
+				RunAction(oAction)				
+            }
+        }
+        SDL2.SDL_Delay(1)
+    }
+}
+
+/**
+ * Handler for the "Keyboard" device types.
+ * Performs the action defined by a keyboard hotkey press.
+ * @param HotkeyName 
+ */
+PressedKey_Callback(HotkeyName)
+{
+	static mIndexer := Map()
+	oAction := GetAction("Keyboard", HotkeyName, mIndexer)
+	RunAction(oAction)
+}
+
+/**
+ * Get the next logical action. For button presses (keyboard and game controllers) more than one action
+ * can be assigned to a button. In these cases, the action changes sequentially with each button press. This
+ * function returns that next sequential action. (for the rom monitor, this is only ever one action
+ * associated with a particular rom.)
+ * @param sDevice - Can be a game controller name, "Keyboard", or "ROM Monitor"
+ * @param sAction - Can be the index of a game controller button, a keyboard key, or a rom name (with no extension)
+ * @param mIndexer - A static Map() provided by the caller to keep track of the sequence.
+ * @returns {Map} - Returns a map containing an action consisting of a verbal annunciation and up to two command lines.
+ */
+GetAction(sDevice, sAction, mIndexer)
+{
+	annunc := ""
+	cl := ""
+	cl_2 := ""
+
+	for device, buttons in oConfig
+		for button, sequences in buttons
+			for sequence, info in sequences
+			{
+				if (device == sDevice && button == sAction)
+				{
+					if (mIndexer.Has(device button))
+					{
+						if (mIndexer[device button] == A_Index)
+						{
+							if (A_Index != sequences.Count)
+							{
+								mIndexer[device button] := A_Index + 1
+								annunc := oConfig[device][button][String(A_Index + 1)]["annunciation"]
+								cl := oConfig[device][button][String(A_Index + 1)]["command_line"]
+								cl_2 := oConfig[device][button][String(A_Index + 1)]["command_line_2"]
+								break 3
+							}
+							else
+							{
+								mIndexer[device button] := 1
+								annunc := oConfig[device][button]["1"]["annunciation"]
+								cl := oConfig[device][button]["1"]["command_line"]
+								cl_2 := oConfig[device][button]["1"]["command_line_2"]
+								break 3
+							}
+						}
+					}
+					else 
+					{
+						mIndexer[device button] := 1
+						annunc := info["annunciation"]
+						cl := info["command_line"]
+						cl_2 := info["command_line_2"]
+						break 3
+					}
+				}
+			}
+
+	oAction := Map()
+	oAction.Annunciation := annunc
+	oAction.CommandLine := cl
+	oAction.CommandLine_2 := cl_2
+	
+	return oAction
+}
+
+/**
+ * Runs the action defined in oAction.  The action consists of an (optional) verbal annunciation
+ * and up to two command lines to execute.
+ * @param oAction 
+ */
+RunAction(oAction)
+{
+	if (oAction.CommandLine)
+	{
+		oVoice.Speak(oAction.Annunciation) ;test
+		
+		SplitPath oAction.CommandLine, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
+		
+		OutDir := StrReplace(OutDir, '"')
+		OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
+
+		if (OutFileName == "VirtualController.exe")
+		{
+			if (ProcessExist("VirtualController.exe"))
+			{
+				ProcessClose "VirtualController.exe"
+			}
+		}
+
+		try Run oAction.CommandLine, OutDir
+	}
+
+	if (oAction.CommandLine_2)
+	{
+		Sleep(1000)
+
+		SplitPath oAction.CommandLine_2, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
+		
+		OutDir := StrReplace(OutDir, '"')
+		OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
+
+		if (OutFileName == "VirtualController.exe")
+		{
+			if (ProcessExist("VirtualController.exe"))
+			{
+				ProcessClose "VirtualController.exe"
+			}
+		}
+
+		try Run oAction.CommandLine_2, OutDir
+	}
+}
+
+;========================================================================================
+;Handle the tool-tips
+;See https://www.autohotkey.com/boards/viewtopic.php?style=19&f=82&t=116086&p=517471
+;========================================================================================
+OnMouseEvent(wp, lp, msg, hwnd)
+{
+	if (!gcToolTip_Checkbox.Value)
+		return
+
+    static TME_LEAVE := 0x2, onButtonHover := false
+    if msg = WM_MOUSEMOVE && !onButtonHover
+    {
+        TRACKMOUSEEVENT := Buffer(8 + A_PtrSize * 2)
+        NumPut('UInt', TRACKMOUSEEVENT.Size,
+               'UInt', TME_LEAVE,
+               'Ptr', hwnd,
+               'Ptr', 10, TRACKMOUSEEVENT)
+        DllCall('TrackMouseEvent', 'Ptr', TRACKMOUSEEVENT)
+        try
+            ToolTipContents:=GuiCtrlFromHwnd(hwnd).TT, ToolTip(ToolTipContents)
+        catch
+            ToolTipContents:=""
+    }
+
+    if msg = WM_MOUSELEAVE
+        ToolTip() ; outside gui
+}

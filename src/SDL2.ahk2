@@ -1,0 +1,256 @@
+#Requires AutoHotkey v2.0
+
+; Simple Wrapper For SDL2
+
+; hobby77
+
+; https://wiki.libsdl.org/SDL2
+
+; #Requires AutoHotkey v2
+#DllLoad "*i %A_ScriptDir%\SDL2.dll"
+
+SDL_EventType := {
+    SDL_FIRSTEVENT : 0,
+    SDL_QUIT : 0x100,
+    /* WinRT app events */
+    SDL_APP_TERMINATING : 0x101,
+    SDL_APP_LOWMEMORY : 0x102,
+    SDL_APP_WILLENTERBACKGROUND : 0x103,
+    SDL_APP_DIDENTERBACKGROUND : 0x104,
+    SDL_APP_WILLENTERFOREGROUND : 0x105,
+    SDL_APP_DIDENTERFOREGROUND : 0x106,
+
+    /* Display events */
+    /* Only available in SDL 2.0.9 or higher. */
+    SDL_DISPLAYEVENT : 0x150,
+
+    /* Window events */
+    SDL_WINDOWEVENT : 0x200,
+    SDL_SYSWMEVENT : 0x201,
+
+    /* Keyboard events */
+    SDL_KEYDOWN : 0x300,
+    SDL_KEYUP : 0x301,
+    SDL_TEXTEDITING : 0x302,
+    SDL_TEXTINPUT : 0x303,
+    SDL_KEYMAPCHANGED : 0x304,
+
+    /* Mouse events */
+    SDL_MOUSEMOTION : 0x400,
+    SDL_MOUSEBUTTONDOWN : 0x401,
+    SDL_MOUSEBUTTONUP : 0x402,
+    SDL_MOUSEWHEEL : 0x403,
+
+    /* Joystick events */
+    SDL_JOYAXISMOTION : 0x600,
+    SDL_JOYBALLMOTION : 0x601,
+    SDL_JOYHATMOTION : 0x602,
+    SDL_JOYBUTTONDOWN : 0x603,
+    SDL_JOYBUTTONUP : 0x604,
+    SDL_JOYDEVICEADDED : 0x605,
+    SDL_JOYDEVICEREMOVED : 0x606,
+
+    /* Game controller events */
+    SDL_CONTROLLERAXISMOTION : 0x650,
+    SDL_CONTROLLERBUTTONDOWN : 0x651,
+    SDL_CONTROLLERBUTTONUP : 0x652,
+    SDL_CONTROLLERDEVICEADDED : 0x653,
+    SDL_CONTROLLERDEVICEREMOVED : 0x654,
+    SDL_CONTROLLERDEVICEREMAPPED : 0x655,
+
+    /* Touch events */
+    SDL_FINGERDOWN : 0x700,
+    SDL_FINGERUP : 0x701,
+    SDL_FINGERMOTION : 0x702,
+
+    /* Gesture events */
+    SDL_DOLLARGESTURE : 0x800,
+    SDL_DOLLARRECORD : 0x801,
+    SDL_MULTIGESTURE : 0x802,
+
+    /* Clipboard events */
+    SDL_CLIPBOARDUPDATE : 0x900,
+
+    /* Drag and drop events */
+    SDL_DROPFILE : 0x1000,
+    /* Only available in 2.0.4 or higher. */
+    SDL_DROPTEXT : 0x1001,
+    SDL_DROPBEGIN : 0x1002,
+    SDL_DROPCOMPLETE : 0x1003,
+
+    /* Audio hotplug events */
+    /* Only available in SDL 2.0.4 or higher. */
+    SDL_AUDIODEVICEADDED : 0x1100,
+    SDL_AUDIODEVICEREMOVED : 0x1101,
+
+    /* Sensor events */
+    /* Only available in SDL 2.0.9 or higher. */
+    SDL_SENSORUPDATE : 0x1200,
+
+    /* Render events */
+    /* Only available in SDL 2.0.2 or higher. */
+    SDL_RENDER_TARGETS_RESET : 0x2000,
+    /* Only available in SDL 2.0.4 or higher. */
+    SDL_RENDER_DEVICE_RESET : 0x2001,
+
+    /* Events SDL_USEREVENT through SDL_LASTEVENT are for
+     * your use, and should be allocated with
+     * SDL_RegisterEvents()
+     */
+    SDL_USEREVENT : 0x8000,
+
+    /* The last event, used for bouding arrays. */
+    SDL_LASTEVENT : 0xFFFF
+}
+
+Class SDL2DLL{
+    
+    Class SDL_Event{
+        type := ""
+        motion := {}
+        jbutton := {}
+        jaxis := {}
+        jball := {}
+        jhat := {}
+        jdevice := {}
+
+       __New(SDL_Event:="") {
+            this.type := NumGet(SDL_Event, 0, "UInt")
+            
+            /* Mouse events */
+            this.motion := {type:       NumGet(SDL_Event, 0, "UInt")  
+                        , timestamp:    NumGet(SDL_Event, 4, "UInt")
+                        , windowID:     NumGet(SDL_Event, 8, "UInt")
+                        , which:        NumGet(SDL_Event, 12, "Int")
+                        , state:        NumGet(SDL_Event, 16, "Char")
+                        , padding1:     NumGet(SDL_Event, 17, "Char")
+                        , padding2:     NumGet(SDL_Event, 18, "Char")
+                        , padding3:     NumGet(SDL_Event, 19, "Char")
+                        , x:            NumGet(SDL_Event, 20, "UInt")
+                        , y:            NumGet(SDL_Event, 24, "UInt")
+                        , xrel:         NumGet(SDL_Event, 28, "UInt")
+                        , yrel:         NumGet(SDL_Event, 32, "UInt")}
+            
+            /* Joystick button events */
+            this.jbutton := {type:      NumGet(SDL_Event, 0, "UInt")
+                        , timestamp:    NumGet(SDL_Event, 4, "UInt")
+                        , which:        NumGet(SDL_Event, 8, "Int")
+                        , button:       NumGet(SDL_Event, 12, "Char")
+                        , state:        NumGet(SDL_Event, 13, "Char")
+                        , padding1:     NumGet(SDL_Event, 14, "Char")
+                        , padding2:     NumGet(SDL_Event, 15, "Char")}
+            /* Joystick axis events */
+            this.jaxis := {type:        NumGet(SDL_Event, 0, "UInt")  
+                        , timestamp:    NumGet(SDL_Event, 4, "UInt")
+                        , which:        NumGet(SDL_Event, 8, "Int")
+                        , axis:         NumGet(SDL_Event, 12, "Char")
+                        , padding1:     NumGet(SDL_Event, 13, "Char")
+                        , padding2:     NumGet(SDL_Event, 14, "Char")
+                        , padding3:     NumGet(SDL_Event, 15, "Char")
+                        , axisValue:    NumGet(SDL_Event, 16, "Short")
+                        , padding4:     NumGet(SDL_Event, 18, "UShort")}
+
+            this.jball := {type:        NumGet(SDL_Event, 0, "UInt")
+                        , timestamp:    NumGet(SDL_Event, 4, "UInt") 
+                        , which:        NumGet(SDL_Event, 8, "Int")  
+                        , ball:         NumGet(SDL_Event, 12, "Char") 
+                        , padding1:     NumGet(SDL_Event, 13, "Char")
+                        , padding2:     NumGet(SDL_Event, 14, "Char")
+                        , padding3:     NumGet(SDL_Event, 15, "Char")
+                        , xrel:         NumGet(SDL_Event, 16, "Short")
+                        , yrel:         NumGet(SDL_Event, 18, "Short")}
+            /* Joystick hat events */
+            this.jhat := {type:         NumGet(SDL_Event, 0, "UInt")
+                        , timestamp:    NumGet(SDL_Event, 4, "UInt")
+                        , which:        NumGet(SDL_Event, 8, "Int") 
+                        , hat:          NumGet(SDL_Event, 12, "Char") 
+                        , hatValue:     NumGet(SDL_Event, 13, "Char") 
+                        , padding1:     NumGet(SDL_Event, 14, "Char")
+                        , padding2:     NumGet(SDL_Event, 15, "Char")}
+            /* Joystick device events */
+            this.jdevice := {type:      NumGet(SDL_Event, 0, "UInt")
+                        , timestamp:    NumGet(SDL_Event, 4, "UInt")
+                        , which:        NumGet(SDL_Event, 8, "Int")}
+       }
+     }
+
+    __New() {
+    ;    if !this.LibLoad
+    ;     MsgBox("Error while loading: " this.dll "`nPlease check the dll version")
+    }
+
+    ;SDL_CALL := DllCall("LoadLibrary","str","\SDL2.dll")
+
+    /* Basic func */
+    SDL_Delay(millisecond) => DllCall("SDL2.dll\SDL_Delay", "UInt", millisecond,"CDecl")
+
+    SDL_Init(flags) => DllCall("SDL2.dll\SDL_Init", "UInt", flags,"CDecl")
+
+    SDL_PumpEvents() => DllCall("SDL2.dll\SDL_PumpEvents")
+
+    SDL_FlushEvent(event_type) => DllCall("SDL2.dll\SDL_FlushEvent", "UInt", event_type)
+
+    SDL_InitSubSystem(flags) => DllCall("SDL2.dll\SDL_InitSubSystem", "UInt", flags,"CDecl")
+
+    SDL_Quit() => DllCall("SDL2.dll\SDL_Quit")
+
+    SDL_SetHint(name,value) => DllCall("SDL2.dll\SDL_SetHint", "AStr", name, "AStr", value,"CDecl")
+    
+    SDL_PollEvent(event) => DllCall("SDL2.dll\SDL_PollEvent", "Ptr", event,"CDecl")
+
+    /* Window and render func, Simple */
+    SDL_CreateWindow(title,x,y,w,h,flags)  => DllCall("SDL2.dll\SDL_CreateWindow", "AStr", title, "Int",x,"Int",y,"Int",w,"Int",h, "UInt", flags,"CDecl")
+    
+    SDL_CreateRenderer(window,index,flags)  => DllCall("SDL2.dll\SDL_CreateRenderer", "Int", window, "Int",index, "UInt", flags,"CDecl")
+    
+    SDL_SetRenderDrawColor(renderer,r,g,b,a)  => DllCall("SDL2.dll\SDL_SetRenderDrawColor", "Int", renderer, "Short",r, "Short",g, "Short",b, "Short",a,"CDecl")
+    
+    SDL_RenderClear(renderer)  => DllCall("SDL2.dll\SDL_RenderClear", "Int", renderer,"CDecl")
+
+    SDL_RenderPresent(renderer)  => DllCall("SDL2.dll\SDL_RenderPresent", "Int", renderer,"CDecl")
+    
+    SDL_GetWindowTitle(window) => DllCall("SDL2.dll\SDL_CreateRenderer", "Int", window,"Cdecl Str")
+    
+    /* Joystick func */
+    SDL_JoystickEventState(state) => DllCall("SDL2.dll\SDL_JoystickEventState", "Int", state,"CDecl")
+
+    SDL_NumJoysticks() => DllCall("SDL2.dll\SDL_NumJoysticks","CDecl") ;~ Get Joystick num
+
+    SDL_JoystickOpen(index) => DllCall("SDL2.dll\SDL_JoystickOpen", "Int", index,"CDecl Ptr") ;~ Get Joystick num
+
+    SDL_JoystickClose(joystick) => DllCall("SDL2.dll\SDL_JoystickClose", "Ptr", joystick)
+
+    SDL_JoystickInstanceID(joystick) => DllCall("SDL2.dll\SDL_JoystickInstanceID","Ptr", joystick,"CDecl Ptr") ;~ Get Joystick Index Id, Start with 0
+
+    SDL_JoystickNameForIndex(index) => DllCall("SDL2.dll\SDL_JoystickNameForIndex", "Int", index,"CDecl AStr")
+    
+    SDL_JoystickName(joystick) => DllCall("SDL2.dll\SDL_JoystickName", "Ptr", joystick,"CDecl AStr") ;~ Get Joystick name from JoystickOpen
+    ;;~ retStr control the return value type, most time we just need the string type.
+    SDL_JoystickGetGUID(joystick, retStr := true){
+        guid := Buffer(16,0)
+        pguid := DllCall("SDL2.dll\SDL_JoystickGetGUID", 'Ptr', guid, "Ptr", joystick,"CDecl Ptr")
+        if (!retStr)
+            return pguid
+        sguid := Buffer(128,0)
+        if (DllCall("ole32.dll\StringFromGUID2", "ptr", pguid, "ptr", sguid, "int", 48))
+            return StrGet(sguid)
+    }
+    
+    SDL_JoystickGetDeviceGUID(device_index, retStr := true){
+        guid := Buffer(16,0)
+        pguid := DllCall("SDL2.dll\SDL_JoystickGetDeviceGUID", 'Ptr', guid, "Ptr", device_index,"CDecl Ptr")
+        if (!retStr)
+            return pguid
+        sguid := Buffer(128,0)
+        if (DllCall("ole32.dll\StringFromGUID2", "ptr", pguid, "ptr", sguid, "int", 48))
+            return StrGet(sguid)
+    }
+
+; void SDL_GUIDToString(SDL_GUID guid, char *pszGUID, int cbGUID);
+;       guid	the ::SDL_GUID you wish to convert to string
+;       pszGUID	buffer in which to write the ASCII string
+;       cbGUID	the size of pszGUID
+    ; SDL_GUIDToString(guid,pszGUID,cbGUID){
+    ;     DllCall(this.dll . "\SDL_GUIDToString", "Ptr", guid,"Ptr",pszGUID,"int",cbGUID)
+    ; }
+}

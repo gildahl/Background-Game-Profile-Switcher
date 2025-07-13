@@ -1,0 +1,80 @@
+
+/************************************************************************
+ * @description Tray icon menu
+ * @file Menu.ahk2
+ * @author © 2025 David G. Dahlstrom
+ * @date 2025/07/13
+ * @version 0.1.0.0
+ ***********************************************************************/
+
+#Requires AutoHotkey v2.0
+
+/**
+ * Build the tray menu
+ */
+Menu_Build()
+{
+	oTrayMenu := A_TrayMenu
+	oTrayMenu.Delete() ;Delete standard items
+	oTrayMenu.Add("&Settings...", MenuSettings)
+	oTrayMenu.Add("&About...", MenuHelpAbout)
+	oTrayMenu.Add()
+	oTrayMenu.Add("E&xit", MenuFileExit)
+}
+
+/**
+ * The "Settings..." menu item
+ */
+MenuSettings(*)
+{
+	global bCancelPoll := true
+
+	Settings_ClearTable()
+	Settings_ReadConfig()
+
+    gcDevices.Value := 1
+    gcAnnunciationEdit.Text := ""
+    gcProfileEdit.Text := ""
+    gcProfileEdit_2.Text := ""
+    gcProfile_2_Checkbox := 0
+    ToggleCheckedState(0)
+	
+	guiSettings.Show("X" mSettings.X " Y" mSettings.Y " W" mSettings.Width " H" mSettings.Height)
+}
+
+/**
+ * The "About..." box menu item
+ */
+MenuHelpAbout(*)
+{
+	sAboutTitle := "About VGPS"
+
+	mAbout := Map()
+	mAbout.Width := 200
+	mAbout.Height := 100
+	mAbout.X := Round((nScreenWidth / 2) - (mAbout.Width / 2))
+	mAbout.Y := Round((nScreenHeight / 2) - (mAbout.Height / 2))
+
+    guiAbout := Gui("-MaximizeBox -MinimizeBox", sAboutTitle) 
+    guiAbout.Add("Text",, "Verbal Game Profile Switcher (VGPS).`n`n© 2025 David G. Dahlstrom")
+    gcAboutExitButton := guiAbout.AddButton("Default W" 50, "OK")
+	gcAboutExitButton.OnEvent("Click", About_Close)
+
+	guiAbout.OnEvent("Close", About_Close)
+    guiAbout.OnEvent("Escape", About_Close)
+
+	gcAboutExitButton.GetPos(,, &w, &h)
+	gcAboutExitButton.Move(Round(mAbout.Width/2 - w/2), mAbout.Height - h * 1.5)
+
+    guiAbout.Show("X" mAbout.X " Y" mAbout.Y " W" mAbout.Width " H" mAbout.Height)
+
+    About_Close(*)
+    {
+        guiAbout.Destroy()  ; Destroy the about box.
+    }
+}
+
+MenuFileExit(*)
+{
+	ExitApp()
+}

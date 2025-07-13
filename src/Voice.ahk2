@@ -1,0 +1,52 @@
+#Requires AutoHotkey v2.0
+
+/************************************************************************
+ * @description Voice class
+ * @file Voice.ahk2
+ * @author © 2025 David G. Dahlstrom
+ * @date 2025/07/13
+ * @version 0.1.0.0
+ ***********************************************************************/
+
+;Speech class.
+;Inspired by https://www.autohotkey.com/boards/viewtopic.php?p=431416#p431416
+;Also: https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ms723596(v=vs.85)
+class voice_class
+{
+	_enabled := true
+	_voice := []
+	_voices := []
+
+	SPERR_NO_MORE_ITEMS := 0x80045039 ;When enumerating items, the requested index is greater than the count of items.
+
+	__New()
+	{
+		deviceIndex := 0
+
+		this._voice := ComObject("SAPI.SpVoice")
+		this._voices := this._voice.GetVoices()
+
+  		;Disables speech if an error occurs
+		this.Speak("")
+	}
+
+	Speak(phrase, voiceNumber := 1, rate := 0, vol := 100)
+	{
+		if (this._enabled)
+		{
+			try
+			{
+				this._voice.Volume := vol
+				this._voice.Rate := rate
+				this._voice.Voice := this._voices.Item(voiceNumber - 1)
+				this._voice.WaitUntilDone(True)
+
+				this._voice.Speak(phrase)
+			}
+			catch
+			{
+				this._enabled := false
+			}
+		}
+	}
+}

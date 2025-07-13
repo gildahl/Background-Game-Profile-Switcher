@@ -1,0 +1,130 @@
+/************************************************************************
+ * @description Class to read truncated MAME ListXML file, Games.xml
+ * @file ReadListXML.ahk2
+ * @author © 2025 David G. Dahlstrom
+ * @date 2025/07/13
+ * @version 0.1.0.0
+ ***********************************************************************/
+#Requires AutoHotkey v2.0
+
+/*
+*  Static class that reads a truncated MAME ListXML file called Games.xml in order to obtain
+*  information about roms, such as their names, descriptions, years, manufacturers, etc.
+*/
+class ReadListXML
+{
+	static _mListXML := Map()
+	static _oDom := ""
+
+	static _cached := false
+	static _mXMLInfo := Map()
+
+	/**
+	 * Returns an object contataining information about a MAME rom
+	 * @param listxml_file - full path and name of the Games.xml file
+	 * @param romSpec - name of the rom without an extension
+	 * @returns {Any | String} - A map containing all the relevant information about the rom
+	 */
+	static GetXMLMetaInfo(listxml_file, romSpec)
+	{
+		;cache the catver.ini file into a Map() so that
+		;subsequent reads are fast.
+		if (!this._cached)
+		{
+			game_count := 0
+
+			if (FileExist(listxml_file))
+			{
+				this._listxml_file := listxml_file
+
+				;DOM documentation found here
+				;https://docs.microsoft.com/en-us/previous-versions/windows/desktop/ms757828(v=vs.85)?redirectedfrom=MSDN
+				if (!IsObject(this._oDOM))
+				{
+					try
+					{
+						this._oDOM := ComObject("MSXML2.DOMDocument.6.0")
+					}
+					catch as e
+					{
+						try
+						{
+							this._oDOM := ComObject("MSXML2.DOMDocument.3.0")
+						}
+						catch as e
+						{
+							;Throw("ERROR: XML Processing Error (MSXML2.DOMDocument.3.0): " FormatErrorMessage(e) "`n", -1)
+						}				
+					}
+
+					this._oDOM.async := false
+					xml_data := FileRead(listxml_file)
+										
+					this._oDOM.loadXML(xml_data)			
+					
+					objNodeList := this._oDOM.getElementsByTagName("machine")
+					game_count := objNodeList.length
+
+					rootNode := this._oDOM.selectSingleNode("//mame")
+					nodeId := rootNode.getAttributeNode("build")
+					this._build_version := nodeId.value			
+			
+					Loop game_count
+					{ 
+						idx := A_index - 1
+						element := ""
+
+						try 	
+						{
+							sRomName := objNodeList.item(idx).getAttributeNode("name").Value
+
+							this._mXMLInfo[sRomName] := Map()
+							this._mXMLInfo[sRomName]["description"] := ""
+							this._mXMLInfo[sRomName]["year"] := ""
+							this._mXMLInfo[sRomName]["manufacturer"] := ""
+							this._mXMLInfo[sRomName]["clone_of"] := ""
+							this._mXMLInfo[sRomName]["rom_of"] := ""
+							this._mXMLInfo[sRomName]["status"] := ""
+							this._mXMLInfo[sRomName]["emulation"] := ""
+							this._mXMLInfo[sRomName]["savestate"] := ""
+		
+							try this._mXMLInfo[sRomName]["clone_of"] := objNodeList.item(idx).getAttributeNode("cloneof").Value
+							try this._mXMLInfo[sRomName]["rom_of"] := objNodeList.item(idx).getAttributeNode("romof").Value
+
+							element := objNodeList.item(idx).getElementsByTagName("description")							
+							try this._mXMLInfo[sRomName]["description"] := element.item(0).text						
+
+							element := objNodeList.item(idx).getElementsByTagName("year")
+							try this._mXMLInfo[sRomName]["year"] := element.item(0).text
+
+							element := objNodeList.item(idx).getElementsByTagName("manufacturer")
+							try this._mXMLInfo[sRomName]["manufacturer"] := element.item(0).text
+
+							try 
+							{
+								element := objNodeList.item(idx).getElementsByTagName("driver")
+							    this._mXMLInfo[sRomName]["status"] := element.item(0).getAttributeNode("status").Value
+							    this._mXMLInfo[sRomName]["emulation"] := element.item(0).getAttributeNode("emulation").Value
+							    this._mXMLInfo[sRomName]["savestate"] := element.item(0).getAttributeNode("savestate").Value
+							}							
+						}
+						catch as e {
+							;LogEntry("WARNING: Unexpected XML read error: " FormatErrorMessage(e) "`n")
+							break
+						}
+					}
+
+				}
+			}
+
+			;no need to read the file again
+			this._cached := true
+		}
+		
+		;return the category of the requested rom
+		if (this._mXMLInfo.Has(romSpec))
+			return this._mXMLInfo[romSpec]
+		else
+			return ""
+	}
+}
