@@ -14,12 +14,22 @@
  */
 Menu_Build()
 {
-	oTrayMenu := A_TrayMenu
+	global oTrayMenu := A_TrayMenu
 	oTrayMenu.Delete() ;Delete standard items
+	oTrayMenu.Add("&Active", MenuActive)
+	oTrayMenu.Add()
 	oTrayMenu.Add("&Settings...", MenuSettings)
 	oTrayMenu.Add("&About...", MenuHelpAbout)
 	oTrayMenu.Add()
 	oTrayMenu.Add("E&xit", MenuFileExit)
+}
+
+MenuActive(*)
+{
+	if (bActive)
+		PauseActiveState()
+	else
+		ResumeActiveState()
 }
 
 /**
@@ -39,6 +49,8 @@ MenuSettings(*)
     gcProfile_2_Checkbox := 0
     ToggleCheckedState(0)
 	
+	SetActive(false)
+
 	guiSettings.Show("X" mSettings.X " Y" mSettings.Y " W" mSettings.Width " H" mSettings.Height)
 }
 
@@ -47,16 +59,16 @@ MenuSettings(*)
  */
 MenuHelpAbout(*)
 {
-	sAboutTitle := "About VGPS"
+	sAboutTitle := "About BGPS"
 
 	mAbout := Map()
-	mAbout.Width := 200
+	mAbout.Width := 250
 	mAbout.Height := 100
 	mAbout.X := Round((nScreenWidth / 2) - (mAbout.Width / 2))
 	mAbout.Y := Round((nScreenHeight / 2) - (mAbout.Height / 2))
 
     guiAbout := Gui("-MaximizeBox -MinimizeBox", sAboutTitle) 
-    guiAbout.Add("Text",, "Verbal Game Profile Switcher (VGPS).`n`n© 2025 David G. Dahlstrom")
+    guiAbout.Add("Text",, "Background Game Profile Switcher (BGPS).`n`n© 2025 David G. Dahlstrom")
     gcAboutExitButton := guiAbout.AddButton("Default W" 50, "OK")
 	gcAboutExitButton.OnEvent("Click", About_Close)
 

@@ -19,6 +19,7 @@ global CodeVersion := "0.1.0.0"
 ;***********************************************************************
 
 #Requires AutoHotkey v2.0
+#SingleInstance Force
 
 #include Menu.ahk2
 #include Voice.ahk2
@@ -33,8 +34,21 @@ TraySetIcon "joystick.ico"
 OnMessage(WM_MOUSEMOVE  := 0x0200, OnMouseEvent)
 OnMessage(WM_MOUSELEAVE := 0x02A3, OnMouseEvent)
 
+global bActive := false
 global SDL2 := SDL2DLL() ;SDL library for game device discovery and polling
 global oVoice := voice_class() ;initialize speech support
+
+global oActions
+global oTemplates
+;global iLastTemplateSelectedText
+global iResumeActivityTickCount := 0
+global iTemplatePick := 1
+global aDevices := Array() ;Holds the devices to display in the list
+global mDeviceIndex := Map() ;Holds the indexes of the devices in the list
+global mDevices := Map() ;Holds all device info
+global mRomsByName := Map()
+global bCancelAssign := false
+global bCancelPoll := false
 
 global nScreenWidth := A_ScreenWidth
 global nScreenHeight := A_ScreenHeight
@@ -45,6 +59,10 @@ global sTemplatesFile := A_ScriptDir "\templates.json"
 global sIniFile := A_ScriptDir "\bgps.ini"
 global sGamesXMLFile := A_ScriptDir "\games.xml"
 
+global aDefaultTemplates := Array()
+aDefaultTemplates.Push('"C:\Program Files\Virtual Controller\VirtualController.exe" /load [profile_name] /run /minimize')
+aDefaultTemplates.Push('"C:\Program files\Ultramap\Ultramap.exe" [profile_name]')
+
 Menu_Build()  ;Build tray menu
 
 Settings_BuildScreen()
@@ -53,8 +71,9 @@ Settings_ReadTemplates()
 Settings_ReadConfig()
 Settings_FillRomList()
 
+SetActive(true)
 RomWatcher()
-PollControllers()
+Poll()
 
 /**
  * Initialize the ROM folder watcher. This monitors all the *.zip rom files in the folder for
@@ -90,43 +109,69 @@ FileAccess_Callback(Folder, Changes)
 	static tLastTickCount := 0
     static tLastFileName := ""
 
+	;get the name of the rom file that was accessed
 	For Key, Change In Changes {
 		sROMFile := Change.HasOwnProp("Name") ? Change.Name : ""
 	}
 
+	if (tLastFileName == sROMFile)
+	{   tLastFileName := ""
+		return
+	}
+
+	/*
 	if (tLastFileName && tLastTickCount)
     {
 		;Changing the last-accessed timestamp below will trigger an extra notification.
-		;So do this check to ignore it.
+		;So do this check to suppress it.
         if (sROMFile == tLastFileName && A_TickCount - tLastTickCount < 5000)
             return
     }
+	*/
+
+	if (iResumeActivityTickCount)
+	{
+		if (iResumeActivityTickCount < 2000)
+		{
+			global iResumeActivityTickCount := 0
+			return
+		}
+	}
             
 	;Force the last access timestamp to a week ago. This is to overcome an issue in which
-	;Windows does not natively update this timestamp if it is too recent, so lets make it look old so it does.
-	FileSetTime DateAdd(A_Now, -7, "days"), sROMFile, "A"
+	;Windows does not natively update this timestamp if it is too recent, so lets make it look old so it does.	
+	try {
+		FileSetTime DateAdd(A_Now, -7, "days"), sROMFile, "A"
+	}
+	catch {
+		
+	}
 
 	tLastTickCount := A_TickCount
 	tLastFileName := sROMFile
 
 	mIndexer := Map()
-	SplitPath(sROMFile,,,, &OutNameNoExt)
+	SplitPath(sROMFile,,,, &OutNameNoExt) ;the list doesn't have the .zip extension so strip it off.
 	oAction := GetAction("ROM Monitor", OutNameNoExt, mIndexer)
+
+	;if the action is not defined, then get the Default action (if one exists)
+	if (oAction.Key == "")
+		oAction := GetAction("ROM Monitor", "[Default]", mIndexer)
+	
 	RunAction(oAction)
 }
 
 /**
- * Handle controller button presses. Uses SDL2 methods that are 
- * improvements over native AHK, thanks to these sources:
- * https://www.autohotkey.com/boards/viewtopic.php?t=115995
- * https://wiki.libsdl.org/SDL2/APIByCategory
+ * Main handler for game controller buttons and keybord key presses.
+ * Setting the global bCancelPoll=false will disable polling. Calling
+ * Poll() again will resume polling.
  */
-PollControllers()
+Poll()
 {
 	global bCancelPoll
 
-	;Register hotkeys
-	for device, buttons in oConfig
+	;Register hotkeys for keypress handling
+	for device, buttons in oActions
 	{
 		for button, sequences in buttons
 		{
@@ -134,6 +179,11 @@ PollControllers()
 				Hotkey(button, PressedKey_Callback, "On")
 		}
 	}
+
+	; Handle controller button presses. Uses SDL2 methods that are 
+	; improvements over native AHK, thanks to these sources:
+	; https://www.autohotkey.com/boards/viewtopic.php?t=115995
+	; https://wiki.libsdl.org/SDL2/APIByCategory
 
 	;AHK doesn't support union, need Buffer to receive SDL_Event
     evtBuffer := Buffer(56,0)
@@ -152,8 +202,10 @@ PollControllers()
 
 	   if (bCancelPoll)
 	   {
-			;unregister hotkeys
-			for device, buttons in oConfig
+			SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
+
+			;disable hotkeys
+			for device, buttons in oActions
 			{
 				for button, sequences in buttons
 				{
@@ -162,18 +214,19 @@ PollControllers()
 				}
 			}
 
-			bCancelPoll := false
+			bCancelPoll := false 
 			break
 	   }
     
        if (PollEvent)
        {
-			if (evt.type == SDL_EventType.SDL_QUIT) ; Close evt
+			if (evt.type == SDL_EventType.SDL_QUIT) ; Close event
 			{
 				SDL2.SDL_Quit()		 
 			}
 			else if (evt.type == SDL_EventType.SDL_JOYBUTTONDOWN) ;, SDL_EventType.SDL_JOYBUTTONUP: ; Joy button evt
 			{
+				;Get the next logical action from the action list based on the button press, then run it
 				oAction := GetAction(aDevices[mDeviceIndex[evt.jbutton.which]], evt.jbutton.button, mIndexer)
 				SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)				
 				RunAction(oAction)				
@@ -191,6 +244,8 @@ PollControllers()
 PressedKey_Callback(HotkeyName)
 {
 	static mIndexer := Map()
+
+	;Get the next logical action from the action list based on the key press, then run it
 	oAction := GetAction("Keyboard", HotkeyName, mIndexer)
 	RunAction(oAction)
 }
@@ -198,10 +253,9 @@ PressedKey_Callback(HotkeyName)
 /**
  * Get the next logical action. For button presses (keyboard and game controllers) more than one action
  * can be assigned to a button. In these cases, the action changes sequentially with each button press. This
- * function returns that next sequential action. (for the rom monitor, this is only ever one action
- * associated with a particular rom.)
+ * function returns that next sequential action. 
  * @param sDevice - Can be a game controller name, "Keyboard", or "ROM Monitor"
- * @param sAction - Can be the index of a game controller button, a keyboard key, or a rom name (with no extension)
+ * @param sAction - Can be the index of a game controller button, a keyboard key (or combo), or a rom name (with no extension)
  * @param mIndexer - A static Map() provided by the caller to keep track of the sequence.
  * @returns {Map} - Returns a map containing an action consisting of a verbal annunciation and up to two command lines.
  */
@@ -211,7 +265,7 @@ GetAction(sDevice, sAction, mIndexer)
 	cl := ""
 	cl_2 := ""
 
-	for device, buttons in oConfig
+	for device, buttons in oActions
 		for button, sequences in buttons
 			for sequence, info in sequences
 			{
@@ -224,17 +278,17 @@ GetAction(sDevice, sAction, mIndexer)
 							if (A_Index != sequences.Count)
 							{
 								mIndexer[device button] := A_Index + 1
-								annunc := oConfig[device][button][String(A_Index + 1)]["annunciation"]
-								cl := oConfig[device][button][String(A_Index + 1)]["command_line"]
-								cl_2 := oConfig[device][button][String(A_Index + 1)]["command_line_2"]
+								annunc := oActions[device][button][String(A_Index + 1)]["annunciation"]
+								cl := oActions[device][button][String(A_Index + 1)]["command_line"]
+								cl_2 := oActions[device][button][String(A_Index + 1)]["command_line_2"]
 								break 3
 							}
 							else
 							{
 								mIndexer[device button] := 1
-								annunc := oConfig[device][button]["1"]["annunciation"]
-								cl := oConfig[device][button]["1"]["command_line"]
-								cl_2 := oConfig[device][button]["1"]["command_line_2"]
+								annunc := oActions[device][button]["1"]["annunciation"]
+								cl := oActions[device][button]["1"]["command_line"]
+								cl_2 := oActions[device][button]["1"]["command_line_2"]
 								break 3
 							}
 						}
@@ -251,6 +305,7 @@ GetAction(sDevice, sAction, mIndexer)
 			}
 
 	oAction := Map()
+	oAction.Key := annunc cl cl_2
 	oAction.Annunciation := annunc
 	oAction.CommandLine := cl
 	oAction.CommandLine_2 := cl_2
@@ -260,49 +315,98 @@ GetAction(sDevice, sAction, mIndexer)
 
 /**
  * Runs the action defined in oAction.  The action consists of an (optional) verbal annunciation
- * and up to two command lines to execute.
+ * and up to two command lines.
  * @param oAction 
  */
 RunAction(oAction)
 {
-	if (oAction.CommandLine)
-	{
-		oVoice.Speak(oAction.Annunciation) ;test
-		
-		SplitPath oAction.CommandLine, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
-		
-		OutDir := StrReplace(OutDir, '"')
-		OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
+	static sLastActionKey := ""
 
-		if (OutFileName == "VirtualController.exe")
+	if (oAction.Key != sLastActionKey) ;don't run the same action twice in a row
+	{
+		if (oAction.CommandLine)
 		{
-			if (ProcessExist("VirtualController.exe"))
+			oVoice.Speak(oAction.Annunciation)
+			
+			SplitPath oAction.CommandLine, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
+			
+			OutDir := StrReplace(OutDir, '"')
+			OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
+
+			;VirtualController needs to be restarted otherwise it invokes multiple instances.
+			if (OutFileName == "VirtualController.exe")
 			{
-				ProcessClose "VirtualController.exe"
+				if (ProcessExist("VirtualController.exe"))
+				{
+					ProcessClose "VirtualController.exe"
+				}
 			}
+
+			try Run oAction.CommandLine, OutDir
 		}
 
-		try Run oAction.CommandLine, OutDir
+		if (oAction.CommandLine_2)
+		{
+			Sleep(1000)
+
+			SplitPath oAction.CommandLine_2, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
+			
+			OutDir := StrReplace(OutDir, '"')
+			OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
+
+			;VirtualController needs to be restarted otherwise it invokes multiple instances.
+			if (OutFileName == "VirtualController.exe")
+			{
+				if (ProcessExist("VirtualController.exe"))
+				{
+					ProcessClose "VirtualController.exe"
+				}
+			}
+
+			try Run oAction.CommandLine_2, OutDir
+		}
+
+		sLastActionKey := oAction.Key
 	}
+}
 
-	if (oAction.CommandLine_2)
+PauseActiveState()
+{
+	global bCancelPoll := true
+	;WatchFolder("**PAUSE", True)
+	SetActive(false)
+}
+
+ResumeActiveState()
+{
+	/*
+	try	attrib := DirExist(gcROMMonitorFolderEdit.Text)  
+	iResumeActivityTickCount := A_TickCount
+	
+	if (attrib)
 	{
-		Sleep(1000)
+		FileSetTime DateAdd(A_Now, -7, "days"), gcROMMonitorFolderEdit.Text "\*.zip", "A"
+		WatchFolder("**PAUSE", False)
+	}
+	*/
 
-		SplitPath oAction.CommandLine_2, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
-		
-		OutDir := StrReplace(OutDir, '"')
-		OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
+	SetActive(true)
+	Poll() 
+}
 
-		if (OutFileName == "VirtualController.exe")
-		{
-			if (ProcessExist("VirtualController.exe"))
-			{
-				ProcessClose "VirtualController.exe"
-			}
-		}
+SetActive(bActiveState)
+{
+	global bActive := true
 
-		try Run oAction.CommandLine_2, OutDir
+	if (bActiveState)
+	{
+		bActive := true
+		oTrayMenu.Check("&Active")
+	}
+	else
+	{
+		bActive := false
+		oTrayMenu.Uncheck("&Active")
 	}
 }
 

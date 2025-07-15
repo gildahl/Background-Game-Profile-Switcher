@@ -6,18 +6,6 @@
  * @version 0.1.0.0
  ***********************************************************************/
 
-global oConfig
-global oTemplates
-global iTemplatePick := 1
-global aDevices := Array() ;Holds the devices to display in the list
-global mDeviceIndex := Map() ;Holds the indexes of the devices in the list
-global mDevices := Map() ;Holds all device info
-global mRomsByName := Map()
-global bCancelAssign := false
-global bCancelPoll := false
-global sTemplate := '"C:\Program Files\Virtual Controller\VirtualController.exe" /load [profile_name] /run /minimize'
-global sTemplateDefault := sTemplate
-
 /**
  * Create Settings Screen
  */
@@ -26,7 +14,7 @@ Settings_BuildScreen()
 	global
 
 	mSettings := Map()
-	sSettingsTitle := "Verbal Game Profile Switcher - Settings"
+	sSettingsTitle := "Background Game Profile Switcher (BGPS) - Settings"
 
 	mSettings.Width := 850
 	mSettings.Height := 700
@@ -34,7 +22,7 @@ Settings_BuildScreen()
 	mSettings.Y := Round((nScreenHeight / 2) - (mSettings.Height / 2))
 	guiSettings := Gui(,sSettingsTitle)
 
-    guiSettings.OnEvent("Close", Settings_Exit)
+    guiSettings.OnEvent("Close", Settings_Close)
 
 	gcDevicesLabel := guiSettings.AddText("x" 30 " y" 10 " w" 250, "Choose device")
 
@@ -68,10 +56,14 @@ Settings_BuildScreen()
 	fROMDropDown_Change := ROMDropDown_Change.Bind()
 	gcROMDropDown.OnEvent("Change", fROMDropDown_Change)
 
+	gcROMDropDownGameInfo := guiSettings.AddText("x" 440 " y" 92 " w" 365 " 0x2", "")
+	gcROMDropDownGameRom := guiSettings.AddText("x" 442 " y" 90 " w" 150, "")
+
 	gcProfileLabel := guiSettings.AddText("x" 60 " y" 110 " w" 300, "Profile name")
 	gcProfileEdit := guiSettings.AddEdit("x" 60 " y" 125 " w" 550 " +BackgroundWhite",)
 	fProfileEdit_Change := ProfileEdit_Change.Bind()
 	gcProfileEdit.OnEvent("Change", fProfileEdit_Change)
+	;gcProfileEdit.TT = "Enter a profile name to be used"
 
 	gcProfileBrowseButton := guiSettings.AddButton("x" 615 " y" 125 " w" nButtonWidth, "Browse...")
 	fProfileBrowseButton_Click := ProfileBrowseButton_Click.Bind()
@@ -81,6 +73,11 @@ Settings_BuildScreen()
 	gcTemplateEdit := guiSettings.AddComboBox("x" 60 " y" 167 " w" 550 " +BackgroundWhite",)
 	fTemplateEdit_Change := TemplateEdit_Change.Bind()
 	gcTemplateEdit.OnEvent("Change", fTemplateEdit_Change)
+
+	;gcUpdateTemplateButton := guiSettings.AddButton("x" 785 " y" 167 " w" nButtonWidth, "Update")
+	;fUpdateTemplateButton_Click := UpdateTemplateButton_Click.Bind()
+	;gcUpdateTemplateButton.OnEvent("Click", UpdateTemplateButton_Click)
+	;gcUpdateTemplateButton.Enabled := false
 
 	gcAddTemplateButton := guiSettings.AddButton("x" 615 " y" 167 " w" nButtonWidth, "Add")
 	fAddTemplateButton_Click := AddTemplateButton_Click.Bind()
@@ -164,9 +161,9 @@ Settings_BuildScreen()
 	gcSaveButton.OnEvent("Click", fSaveButton_Click)
 	gcSaveButton.Enabled := false
 
-	gcExitButton := guiSettings.AddButton("x" 740 " y" 660 " w" nButtonWidth, "Close")
-	fExitButton_Click := ExitButton_Click.Bind()
-	gcExitButton.OnEvent("Click", fExitButton_Click)
+	gcCloseButton := guiSettings.AddButton("x" 740 " y" 660 " w" nButtonWidth, "Close")
+	fCloseButton_Click := CloseButton_Click.Bind()
+	gcCloseButton.OnEvent("Click", fCloseButton_Click)
 
 	gcToolTip_Checkbox := guiSettings.AddCheckbox("x" 30 " y" 660, "Show Tooltips")
     fToolTip_Checkbox_Click := ToolTip_Checkbox_Click.Bind()
@@ -256,12 +253,7 @@ Settings_ReadTemplates()
 {
 	if (!FileExist(sTemplatesFile))
 	{
-		;Create default oTemplates object if JSON file is missing
-		aTemplates := Array()
-		aTemplates.Push('"C:\Program Files\Virtual Controller\VirtualController.exe" /load [profile_name] /run /minimize')
-		aTemplates.Push('"C:\Program files\Ultramap\Ultramap.exe" [profile_name]')
-
-		sJSON := JSON.stringify(aTemplates)
+		sJSON := JSON.stringify(aDefaultTemplates)
 
 		try
 			fTemplatesFile := FileOpen(sTemplatesFile, "w")
@@ -299,10 +291,10 @@ Settings_ReadConfig()
 	if (FileExist(sConfigFile))
 	{
 		sJSON := FileRead(sConfigFile)
-		oConfig := JSON.parse(sJSON)
-		oConfig.Default := ""
+		oActions := JSON.parse(sJSON)
+		oActions.Default := ""
 		
-		for device, j in oConfig
+		for device, j in oActions
 			for button, t in j
 				for sequence, info in t
 				iRow := gcListView.Insert(1000,,device, button, sequence, info.Get("annunciation", ""), info.Get("profile", ""),
@@ -330,7 +322,7 @@ Settings_ClearTable()
  * Program Exit/Close
  * @returns {Integer} 
  */
-Settings_Exit(*)
+Settings_Close(*)
 {
     CancelAssign()
 
@@ -341,9 +333,9 @@ Settings_Exit(*)
 
 	if (result == "Yes")
 	{
-        gcSaveButton.Enabled := false
+		gcSaveButton.Enabled := false
 		guiSettings.Hide()
-		PollControllers()
+		ResumeActiveState()
 	}
     else
         return true
@@ -436,9 +428,9 @@ SaveButton_Click(call1, call2)
 	fConfigFile.Write(sJSON)
 	fConfigFile.Close()
 
-	;Now rebuild the oConfig map
+	;Now rebuild the oActions map
 	sJSON := FileRead(sConfigFile)
-	global oConfig := JSON.parse(sJSON)
+	global oActions := JSON.parse(sJSON)
 
 	gcSaveButton.Enabled := false
 }
@@ -448,9 +440,9 @@ SaveButton_Click(call1, call2)
  * @param call1 
  * @param call2 
  */
-ExitButton_Click(call1, call2)
+CloseButton_Click(call1, call2)
 {
-    Settings_Exit()
+    Settings_Close()
 }
 
 Devices_Change(*)
@@ -462,6 +454,8 @@ Devices_Change(*)
 		gcROMMonitorFolderLabel.Visible := true
 		gcROMDropDownLabel.Visible := true
 		gcROMDropDown.Visible := true
+		gcROMDropDownGameInfo.Visible := true
+		gcROMDropDownGameRom.Visible := true
 	}
 	else
 	{
@@ -470,11 +464,23 @@ Devices_Change(*)
 		gcROMMonitorFolderLabel.Visible := false
 		gcROMDropDownLabel.Visible := false
 		gcROMDropDown.Visible := false
+		gcROMDropDownGameInfo.Visible := false
+		gcROMDropDownGameRom.Visible := false
 	}
 }
 
 TemplateEdit_Change(*)
 {
+	/*
+	global iLastTemplateSelectedText
+
+	if (gcTemplateEdit.Value != 0)
+		iLastTemplateSelectedText := gcTemplateEdit.Text
+
+	if (ControlGetItems(gcTemplateEdit).Length > 0)
+		gcUpdateTemplateButton.Enabled := true
+    */
+
     if (gcTemplateEdit.Text == "")
     {
         gcAddTemplateButton.Enabled := false
@@ -556,7 +562,18 @@ MoveDownButton_Click(call1, call2)
 	gcSaveButton.Enabled := true
 }
 
-AddTemplateButton_Click(call1, call2)
+/*
+UpdateTemplateButton_Click(call1, call2)
+{
+	AddTemplateButton_Click()
+	gcTemplateEdit.Text := iLastTemplateSelectedText
+	RemoveTemplateButton_Click()
+	;global iLastTemplateSelectedText := gcTemplateEdit.Text
+	;gcTemplateEdit.Choose(ControlGetItems(gcTemplateEdit).Length)
+}
+*/
+
+AddTemplateButton_Click(*)
 {
     if (gcTemplateEdit.Text == "")
         return
@@ -568,7 +585,7 @@ AddTemplateButton_Click(call1, call2)
     SyncTemplates()
 }
 
-RemoveTemplateButton_Click(call1, call2)
+RemoveTemplateButton_Click(*)
 {
 	last := gcTemplateEdit.Value
 	try gcTemplateEdit.Delete(gcTemplateEdit.Value)
@@ -591,6 +608,7 @@ RemoveTemplateButton_Click(call1, call2)
     {
         gcAddTemplateButton.Enabled := false
         gcRemoveTemplateButton.Enabled := false
+		;gcUpdateTemplateButton.Enabled := false
     }
 }
 
@@ -660,6 +678,8 @@ EditButton_Click(call1, call2)
 		{
 			MsgBox("Cannot set game since `"" gcListView.GetText(iRow, 2) "`" is no longer in the list.", "Edit Warning", 16)
 		}
+
+		SetRomInfo()
 	}
 
 	gcAnnunciationEdit.Text := gcListView.GetText(iRow, 4)
@@ -719,7 +739,7 @@ ROMMonitorFolderBrowseButton_Click(call1, call2)
 
 ROMDropDown_Change(*)
 {
-
+	SetRomInfo()
 }
 
 ProfileBrowseButton_Click(call1, call2)
@@ -848,15 +868,12 @@ WriteActionToList(sDevice, sAction)
 	cl := ""
 	cl_2 := ""
 	
-	if (FileExist(gcProfileEdit.Text))
-	{
-		SplitPath(gcProfileEdit.Text, &profile_name)
-		profile_full_name := gcProfileEdit.Text
-	}
+	SplitPath(gcProfileEdit.Text, &profile_name)
+	profile_full_name := gcProfileEdit.Text
 
     cl := StrReplace(gcTemplateEdit.Text, "[profile_name]", profile_name)
 	cl := StrReplace(cl, "[profile_full_name]", profile_full_name)
-	cl := StrReplace(cl, "[profile_text]", gcProfileEdit.Text)
+	;cl := StrReplace(cl, "[profile_text]", gcProfileEdit.Text)
 
 	if (gcProfile_2_Checkbox.Value)
 	{
@@ -871,7 +888,7 @@ WriteActionToList(sDevice, sAction)
 
 		cl_2 := StrReplace(gcTemplateEdit_2.Text, "[profile_name]", profile_name)
 		cl_2 := StrReplace(cl_2, "[profile_full_name]", profile_full_name)
-		cl_2 := StrReplace(cl_2, "[profile_text]", gcProfileEdit_2.Text)
+		;cl_2 := StrReplace(cl_2, "[profile_text]", gcProfileEdit_2.Text)
 	}
 
     ;if the device/action is a duplicate
@@ -1051,10 +1068,22 @@ UpdateAssignButtonState()
  */
 ItemInList(device, button, cl, cl_2)
 {
-	Loop gcListView.GetCount()
+	if (device == "ROM Monitor") ;ROM Monitor adds an additional check to make sure sequence is only ever 1
 	{
-		if (gcListView.GetText(A_Index, 1) == device && gcListView.GetText(A_Index, 2) == button && gcListView.GetText(A_Index, 6) == cl && gcListView.GetText(A_Index, 8) = cl_2)
-			return true
+		Loop gcListView.GetCount()
+		{
+			if (gcListView.GetText(A_Index, 1) == device && gcListView.GetText(A_Index, 2) == button && gcListView.GetText(A_Index, 3) == 1 && gcListView.GetText(A_Index, 6) == cl && gcListView.GetText(A_Index, 8) = cl_2
+			    || gcListView.GetText(A_Index, 1) == device && gcListView.GetText(A_Index, 2) == button && gcListView.GetText(A_Index, 3) == 1)
+				return true
+		}
+	}
+	else
+	{
+		Loop gcListView.GetCount()
+		{
+			if (gcListView.GetText(A_Index, 1) == device && gcListView.GetText(A_Index, 2) == button && gcListView.GetText(A_Index, 6) == cl && gcListView.GetText(A_Index, 8) = cl_2)
+				return true
+		}
 	}
 
 	return false
@@ -1088,6 +1117,25 @@ ResequenceList()
     gcListView.Redraw()
 
 	return iSeq
+}
+
+SetRomInfo()
+{
+	sYear := sManufacturer := sRom := ""
+
+	if (gcROMDropDown.Text = "[Default]")
+		gcROMDropDownGameInfo.Text := ""
+
+    try sYear := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, mRomsByName[gcROMDropDown.Text])["year"]
+	try sManufacturer := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, mRomsByName[gcROMDropDown.Text])["manufacturer"]
+
+	if (sManufacturer)
+		gcROMDropDownGameInfo.Text := sManufacturer " (" sYear ")"
+	else
+		gcROMDropDownGameInfo.Text := sYear
+
+	try sRom := mRomsByName[gcROMDropDown.Text]
+	gcROMDropDownGameRom.Text := sRom == "" ? sRom : sRom ".zip"
 }
 
 /**
