@@ -16,22 +16,12 @@ Menu_Build()
 {
 	global oTrayMenu := A_TrayMenu
 	oTrayMenu.Delete() ;Delete standard items
-	oTrayMenu.Add("&Active", MenuActive)
-	oTrayMenu.Add()
 	oTrayMenu.Add("&Settings...", MenuSettings)
 	oTrayMenu.Add()
 	oTrayMenu.Add("&Help...", MenuHelp)
 	oTrayMenu.Add("&About...", MenuAbout)
 	oTrayMenu.Add()
 	oTrayMenu.Add("E&xit", MenuFileExit)
-}
-
-MenuActive(*)
-{
-	if (bActive)
-		PauseActiveState()
-	else
-		ResumeActiveState()
 }
 
 MenuHelp(*)
@@ -55,8 +45,6 @@ MenuSettings(*)
     gcProfileEdit_2.Text := ""
     gcProfile_2_Checkbox := 0
     ToggleCheckedState(0)
-	
-	SetActive(false)
 
 	guiSettings.Show("X" mSettings.X " Y" mSettings.Y " W" mSettings.Width " H" mSettings.Height)
 }

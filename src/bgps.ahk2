@@ -34,9 +34,13 @@ TraySetIcon "joystick.ico"
 OnMessage(WM_MOUSEMOVE  := 0x0200, OnMouseEvent)
 OnMessage(WM_MOUSELEAVE := 0x02A3, OnMouseEvent)
 
-global bActive := false
 global SDL2 := SDL2DLL() ;SDL library for game device discovery and polling
 global oVoice := voice_class() ;initialize speech support
+
+;global flags
+global bCancelAssign := false
+global bCancelPoll := false
+global bActive := false
 
 global oActions
 global oTemplates
@@ -46,8 +50,6 @@ global aDevices := Array() ;Holds the devices to display in the list
 global mDeviceIndex := Map() ;Holds the indexes of the devices in the list
 global mDevices := Map() ;Holds all device info
 global mRomsByName := Map()
-global bCancelAssign := false
-global bCancelPoll := false
 
 global nScreenWidth := A_ScreenWidth
 global nScreenHeight := A_ScreenHeight
@@ -69,8 +71,7 @@ Settings_ReadTemplates()
 Settings_ReadConfig()
 Settings_FillRomList()
 
-SetActive(true)
-RomWatcher()
+StartRomWatcher()
 Poll()
 
 /**
@@ -78,7 +79,7 @@ Poll()
  * changes to the last access timestamp. These detections raise a notification that inform
  * what game has just been loaded.
  */
-RomWatcher()
+StartRomWatcher()
 {
 	try	attrib := DirExist(gcROMMonitorFolderEdit.Text)  
 	
@@ -93,7 +94,7 @@ RomWatcher()
 
 		;Register the folder whose files will be monitored for being accessed. 32 watches for changes
 		;to the file access timestamp, and will notify FileAccess_Callback() when such detections are made.
-		WatchFolder(gcROMMonitorFolderEdit.Text, FileAccess_Callback, False, 32)
+		WatchFolder(gcROMMonitorFolderEdit.Text, RomAccess_Callback, False, 32)
 	}
 }
 
@@ -102,9 +103,8 @@ RomWatcher()
  * @param Folder - The folder in which a change was detected
  * @param Changes - The specific changes detected, including the name of the file accessed.
  */
-FileAccess_Callback(Folder, Changes) 
+RomAccess_Callback(Folder, Changes) 
 {
-	static tLastTickCount := 0
     static tLastFileName := ""
 
 	;get the name of the rom file that was accessed
@@ -112,31 +112,25 @@ FileAccess_Callback(Folder, Changes)
 		sROMFile := Change.HasOwnProp("Name") ? Change.Name : ""
 	}
 
+	;Changing the timestamp below triggers a second notification, so lets suppress it
 	if (tLastFileName == sROMFile)
-	{   tLastFileName := ""
+	{   
+		tLastFileName := ""
 		return
 	}
 
-	if (iResumeActivityTickCount)
-	{
-		if (iResumeActivityTickCount < 2000)
-		{
-			global iResumeActivityTickCount := 0
-			return
-		}
-	}
-            
 	;Force the last access timestamp to a week ago. This is to overcome an issue in which
 	;Windows does not natively update this timestamp if it is too recent, so lets make it look old so it does.	
-	try {
-		FileSetTime DateAdd(A_Now, -7, "days"), sROMFile, "A"
-	}
-	catch {
-		
-	}
+	try FileSetTime DateAdd(A_Now, -7, "days"), sROMFile, "A"
 
-	tLastTickCount := A_TickCount
 	tLastFileName := sROMFile
+
+	;Return if the application is in an inactive state (such when in the Settings screen)
+	;It's important that we don't leave earlier than this point since any file activity can happen in
+	;the dormant state and if it does, we still need to update the timestamps above. Also note that
+	;we don't use the **PAUSE feature of WatchFolder since it has side-effects.
+	if (!bActive)
+		return
 
 	mIndexer := Map()
 	SplitPath(sROMFile,,,, &OutNameNoExt) ;the list doesn't have the .zip extension so strip it off.
@@ -151,12 +145,14 @@ FileAccess_Callback(Folder, Changes)
 
 /**
  * Main handler for game controller buttons and keybord key presses.
- * Setting the global bCancelPoll=false will disable polling. Calling
- * Poll() again will resume polling.
+ * 
+ * Setting the global bCancelPoll = false disables polling. 
+ * Calling Poll() again will resume polling.
  */
 Poll()
 {
 	global bCancelPoll
+	global bActive := true
 
 	;Register hotkeys for keypress handling
 	for device, buttons in oActions
@@ -203,6 +199,7 @@ Poll()
 			}
 
 			bCancelPoll := false 
+			bActive := false
 			break
 	   }
     
@@ -349,35 +346,6 @@ RunCommandLine(cl)
 	}
 
 	try Run cl, OutDir
-}
-
-PauseActiveState()
-{
-	global bCancelPoll := true
-	;WatchFolder("**PAUSE", True)
-	SetActive(false)
-}
-
-ResumeActiveState()
-{
-	SetActive(true)
-	Poll() 
-}
-
-SetActive(bActiveState)
-{
-	global bActive := true
-
-	if (bActiveState)
-	{
-		bActive := true
-		oTrayMenu.Check("&Active")
-	}
-	else
-	{
-		bActive := false
-		oTrayMenu.Uncheck("&Active")
-	}
 }
 
 ;========================================================================================

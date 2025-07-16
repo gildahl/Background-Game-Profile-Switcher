@@ -368,7 +368,7 @@ Settings_Close(*)
 	{
 		gcSaveButton.Enabled := false
 		guiSettings.Hide()
-		ResumeActiveState()
+		Poll()
 	}
     else
         return true
