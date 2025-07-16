@@ -71,18 +71,18 @@ Settings_BuildScreen()
 	gcProfileEdit := guiSettings.AddEdit("x" 60 " y" 125 " w" 592 " +BackgroundWhite",)
 	fProfileEdit_Change := ProfileEdit_Change.Bind()
 	gcProfileEdit.OnEvent("Change", fProfileEdit_Change)
-	gcProfileEdit.TT := "Enter a profile name to insert into the [profile_name] or`n[profile_full_name] tag(s) of the Command Line Template."
+	gcProfileEdit.TT := "Enter a profile name to insert into the [profile_name] or`n[profile_full_name] field tag(s) of the Command Line Template."
 	
 	gcProfileBrowseButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidth*3 - 30 - 4 " y" 125 " w" nButtonWidth, "Browse...")
 	fProfileBrowseButton_Click := ProfileBrowseButton_Click.Bind()
 	gcProfileBrowseButton.OnEvent("Click", ProfileBrowseButton_Click)
-	gcProfileBrowseButton.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] tag(s) of the Command Line Template."
+	gcProfileBrowseButton.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of the Command Line Template."
 
 	gcTemplateLabel := guiSettings.AddText("x" 60 " y" 152 " w" 600, "Command Line Template")
 	gcTemplateEdit := guiSettings.AddComboBox("x" 60 " y" 167 " w" 592 " +BackgroundWhite",)
 	fTemplateEdit_Change := TemplateEdit_Change.Bind()
 	gcTemplateEdit.OnEvent("Change", fTemplateEdit_Change)
-	gcTemplateEdit.TT := "A template for the command line which will execute for this action. This template`nmay include tags such as [profile_name] and [profile_full_name] which will be`nreplaced by the contents of the Profile name field.`n`n[profile_name]`          will be replaced by the profile name`n[profile_full_name]   will be replaced by the profile's full path and filename."
+	gcTemplateEdit.TT := "A template for the command line which will execute for this action. This template`nmay include field tags such as [profile_name] and [profile_full_name] which will be`nreplaced by the contents of the Profile name field.`n`n[profile_name]`          will be replaced by the profile name`n[profile_full_name]   will be replaced by the profile's full path and filename."
 
 	gcAddTemplateButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidth*3 - 30 - 4 " y" 166 " w" nButtonWidth, "Add")
 	fAddTemplateButton_Click := AddTemplateButton_Click.Bind()
@@ -107,18 +107,18 @@ Settings_BuildScreen()
 	gcProfileEdit_2 := guiSettings.AddEdit("x" 60 " y" 225 " w" 592 " +BackgroundWhite",)
 	fProfileEdit_2_Change := ProfileEdit_2_Change.Bind()
 	gcProfileEdit_2.OnEvent("Change", fProfileEdit_2_Change)
-	gcProfileEdit_2.TT := "Enter a profile name to insert into the [profile_name] or `n[profile_full_name] tag(s) of the Command Line 2 Template."
+	gcProfileEdit_2.TT := "Enter a profile name to insert into the [profile_name] or `n[profile_full_name] field tag(s) of the Command Line 2 Template."
 
 	gcProfileBrowseButton_2 := guiSettings.AddButton("x" mSettings.Width - nButtonWidth*3 - 30 - 4 " y" 225 " w" nButtonWidth, "Browse...")
 	fProfileBrowseButton_2_Click := ProfileBrowseButton_2_Click.Bind()
 	gcProfileBrowseButton_2.OnEvent("Click", ProfileBrowseButton_2_Click)
-	gcProfileBrowseButton_2.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] tag(s) of`nthe Command Line 2 Template."
+	gcProfileBrowseButton_2.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of`nthe Command Line 2 Template."
 
 	gcTemplateLabel_2 := guiSettings.AddText("x" 60 " y" 252 " w" 600, "Command Line Template 2")
 	gcTemplateEdit_2 := guiSettings.AddComboBox("x" 60 " y" 267 " w" 592 " +BackgroundWhite",)
 	fTemplateEdit_2_Change := TemplateEdit_2_Change.Bind()
 	gcTemplateEdit_2.OnEvent("Change", fTemplateEdit_2_Change)
-	gcTemplateEdit_2.TT := "A template for the command line which will execute for this action. This template`nmay include tags such as [profile_name] and [profile_full_name] which will be`nreplaced by the contents of the Profile name field.`n`n[profile_name]`          will be replaced by the profile name`n[profile_full_name]   will be replaced by the profile's full path and filename."
+	gcTemplateEdit_2.TT := "A template for the command line which will execute for this action. This template`nmay include field tags such as [profile_name] and [profile_full_name] which will be`nreplaced by the contents of the Profile name field.`n`n[profile_name]`          will be replaced by the profile name`n[profile_full_name]   will be replaced by the profile's full path and filename."
 
 	gcTestTemplateButton_2 := guiSettings.AddButton("x" mSettings.Width - nButtonWidth*3 - 30 - 4 " y" 266 " w" nButtonWidth, "Test")
 	fTestTemplateButton_2_Click := TestTemplateButton_2_Click.Bind()

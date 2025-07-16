@@ -17,7 +17,7 @@ Command line templates for Virtual Controller and UltraMap are pre-installed in 
 
 Installation
 ============
-To install BGPS, extract the distribution zip file to a folder on your Windows computer that has read/write access. When you run the executable (BGPS.exe), you will see a joystick icon in the Windows tray and normal background mode is active. Right clicking on this icon will show a menu of options. You will want to choose the "Settings..." option to configure the application.
+To install BGPS, extract the distribution zip file to a folder on your Windows computer that has read/write access. When you run the executable (BGPS.exe), you will see a joystick icon in the Windows tray indicating normal background mode is active. Right clicking on this icon will show a menu of options. You will want to choose the "Settings..." option to configure the application.
 
 Tooltips
 ========
@@ -27,7 +27,7 @@ Normal Operation
 ================
 After BGPS has been configured (see next item), anytime you start the application it will be in its normal background operation mode. In this mode it will monitor your computer for any specified rom activity, keypresses, and or game controller button presses. When such an activity is detected, the appropriate configured profile loading command line will be executed.
 
-It is recommended that one you are done with your gaming session, that you exit BGPS to avoid possible side-effects. However, it is also possible to deactivate keyboard and button triggers while BGPS is still running by right-clicking the tray icon and left-clicking on the "Active" option. Clicking on "Active" a second time will turn monitoring back on.
+It is recommended that once you are done with your gaming session, that you exit BGPS to avoid possible side-effects. However, it is also possible to deactivate keyboard and button triggers while BGPS is still running by right-clicking the tray icon and left-clicking on the "Active" option. Clicking on "Active" a second time will turn monitoring back on.
 
 Configuration
 =============
@@ -49,22 +49,22 @@ If you would like BGPS to verbally annunciate an action when it is executed, you
 
 How to configure Profiles and Command Line Templates
 ====================================================
-Profiles are files such as myprofile.vcd for Virtual Controller, or myprofile.ugc for UltraMap. To make command line creation easier, you may specify the profile separately in the "Profile name" field, and then choose a command line template in the "Command line template" field.  This template will typically contain one of the following tag fields:
+Profiles are files such as myprofile.vcd for Virtual Controller, or myprofile.ugc for UltraMap. To make command line creation easier, you may specify the profile separately in the "Profile name" field, and then choose a command line template in the "Command line template" field.  This template will typically contain one of the following field tags:
 
 [profile_name]        - will be replaced by the filename or contents of "Profile name" field
 [profile_full_name]   - will be replaced by the full path/file or contents of "Profile name" field
 
-For example, if the profile is "C:\Ultrastik\Profiles\qbert.ugc" and the command line template is "C:\UltraMap\UltraMap.exe [profile_name]", then upon pressing the "Assign" button, the command line that will be assigned to the action will be "C:\UltraMap\UltraMap.exe qbert.ugc". If the full path to the profile is needed, then the command line template should be changed to "C:\UltraMap\UltraMap.exe [profile_full_name]. If the command line template has no tags, then the command line will be used verbatim with no insertions. 
+For example, if the profile is "C:\Ultrastik\Profiles\qbert.ugc" and the command line template is "C:\UltraMap\UltraMap.exe [profile_name]", then upon pressing the "Assign" button, the command line that will be assigned to the action will be "C:\UltraMap\UltraMap.exe qbert.ugc". If the full path to the profile is needed, then the command line template should be changed to "C:\UltraMap\UltraMap.exe [profile_full_name]. If the command line template has no field tags, then the command line will be used verbatim with no insertions. 
 
 Additional Notes:
 -----------------
 * To test a command line while still in the Settings screen, press the "Test" button next to the Command Line Template field. Hovering over the "Test" button with the Show Tooltips option turned on, will show the actual command line that will be executed.
 
-* If your profile filename needs quotes around it, then simply add quotes around the tag in the template, such as "[profile_name]" or "[profile_full_name]".
+* If your profile filename needs quotes around it, then simply add quotes around the field tag in the template, such as "[profile_name]" or "[profile_full_name]".
  
 * If you wish to trigger two command lines in a single action, click on the checkbox next to "Profile name 2" and you can configure a second command line using a completely different profile and command line template. There will be a one second delay between the execution of the first and second action.
 
-* If you want to add new templates to BGPS that will persist across sessions, you can edit any of the built-in ones and then use the Add button. You may also delete any templates you no longer want to see in the list.  Note that whenever you do this both the "Command line Template" and "Command Line Template 2" lists will be synchronized to contain the same list of templates.
+* If you want to add a new template to BGPS that will persist across sessions, you can edit any of the built-in ones and then use the Add button. You may also delete any template you no longer want to see in the list.  Note that whenever you do this both the "Command line Template" and "Command Line Template 2" lists will be synchronized to contain the same list of templates.
 
 * As an FYI, these templates are saved in a file called templates.json in the root BGPS folder. You may delete this file to restore the original shipping defaults.
 
@@ -100,7 +100,7 @@ This is the name of the profile you specified.
 
 Command Line
 ------------
-This is the command line template with tags replaced (i.e. the actual command line that will be executed).
+This is the command line template with field tags replaced (i.e. the actual command line that will be executed).
 
 Profile 2
 ---------
@@ -108,7 +108,7 @@ This is the name of any second (optional) profile that you specified.
 
 Command Line 2
 --------------
-This is the second command line template with tags replaced (i.e. the actual command line that will be executed).
+This is the second command line template with field tags replaced (i.e. the actual command line that will be executed).
 
 
 Managing the Action table
