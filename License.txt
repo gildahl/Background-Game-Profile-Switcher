@@ -1,0 +1,5 @@
+Background Game Profile Switcher (BGPS)
+By David Dahlstrom
+=======================================
+
+This software is distributed freely on GitHub for hobbyist users, and may be used and modified freely for personal, non-commercial use. It may not be sold or packaged with any other product or software without permission. 

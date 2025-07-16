@@ -40,7 +40,6 @@ global oVoice := voice_class() ;initialize speech support
 
 global oActions
 global oTemplates
-;global iLastTemplateSelectedText
 global iResumeActivityTickCount := 0
 global iTemplatePick := 1
 global aDevices := Array() ;Holds the devices to display in the list
@@ -52,7 +51,6 @@ global bCancelPoll := false
 
 global nScreenWidth := A_ScreenWidth
 global nScreenHeight := A_ScreenHeight
-global nButtonWidth := 80
 
 global sConfigFile := A_ScriptDir "\bgps.json"
 global sTemplatesFile := A_ScriptDir "\templates.json"
@@ -118,16 +116,6 @@ FileAccess_Callback(Folder, Changes)
 	{   tLastFileName := ""
 		return
 	}
-
-	/*
-	if (tLastFileName && tLastTickCount)
-    {
-		;Changing the last-accessed timestamp below will trigger an extra notification.
-		;So do this check to suppress it.
-        if (sROMFile == tLastFileName && A_TickCount - tLastTickCount < 5000)
-            return
-    }
-	*/
 
 	if (iResumeActivityTickCount)
 	{
@@ -326,48 +314,41 @@ RunAction(oAction)
 	{
 		if (oAction.CommandLine)
 		{
-			oVoice.Speak(oAction.Annunciation)
-			
-			SplitPath oAction.CommandLine, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
-			
-			OutDir := StrReplace(OutDir, '"')
-			OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
-
-			;VirtualController needs to be restarted otherwise it invokes multiple instances.
-			if (OutFileName == "VirtualController.exe")
-			{
-				if (ProcessExist("VirtualController.exe"))
-				{
-					ProcessClose "VirtualController.exe"
-				}
-			}
-
-			try Run oAction.CommandLine, OutDir
+			oVoice.Speak(oAction.Annunciation)			
+			RunCommandLine(oAction.CommandLine)
 		}
 
 		if (oAction.CommandLine_2)
 		{
 			Sleep(1000)
-
-			SplitPath oAction.CommandLine_2, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
-			
-			OutDir := StrReplace(OutDir, '"')
-			OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
-
-			;VirtualController needs to be restarted otherwise it invokes multiple instances.
-			if (OutFileName == "VirtualController.exe")
-			{
-				if (ProcessExist("VirtualController.exe"))
-				{
-					ProcessClose "VirtualController.exe"
-				}
-			}
-
-			try Run oAction.CommandLine_2, OutDir
+			RunCommandLine(oAction.CommandLine_2)
 		}
 
 		sLastActionKey := oAction.Key
 	}
+}
+
+/**
+ * Execute a command line
+ * @param cl - The command line to execute
+ */
+RunCommandLine(cl)
+{
+	SplitPath cl, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
+			
+	OutDir := StrReplace(OutDir, '"')
+	OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
+
+	;VirtualController needs to be restarted otherwise it invokes multiple instances.
+	if (OutFileName == "VirtualController.exe")
+	{
+		if (ProcessExist("VirtualController.exe"))
+		{
+			ProcessClose "VirtualController.exe"
+		}
+	}
+
+	try Run cl, OutDir
 }
 
 PauseActiveState()
@@ -379,17 +360,6 @@ PauseActiveState()
 
 ResumeActiveState()
 {
-	/*
-	try	attrib := DirExist(gcROMMonitorFolderEdit.Text)  
-	iResumeActivityTickCount := A_TickCount
-	
-	if (attrib)
-	{
-		FileSetTime DateAdd(A_Now, -7, "days"), gcROMMonitorFolderEdit.Text "\*.zip", "A"
-		WatchFolder("**PAUSE", False)
-	}
-	*/
-
 	SetActive(true)
 	Poll() 
 }

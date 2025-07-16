@@ -19,7 +19,9 @@ Menu_Build()
 	oTrayMenu.Add("&Active", MenuActive)
 	oTrayMenu.Add()
 	oTrayMenu.Add("&Settings...", MenuSettings)
-	oTrayMenu.Add("&About...", MenuHelpAbout)
+	oTrayMenu.Add()
+	oTrayMenu.Add("&Help...", MenuHelp)
+	oTrayMenu.Add("&About...", MenuAbout)
 	oTrayMenu.Add()
 	oTrayMenu.Add("E&xit", MenuFileExit)
 }
@@ -30,6 +32,11 @@ MenuActive(*)
 		PauseActiveState()
 	else
 		ResumeActiveState()
+}
+
+MenuHelp(*)
+{
+	Run("notepad readme.txt", A_ScriptDir)
 }
 
 /**
@@ -57,7 +64,7 @@ MenuSettings(*)
 /**
  * The "About..." box menu item
  */
-MenuHelpAbout(*)
+MenuAbout(*)
 {
 	sAboutTitle := "About BGPS"
 
