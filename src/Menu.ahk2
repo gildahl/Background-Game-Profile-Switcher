@@ -1,4 +1,3 @@
-
 /************************************************************************
  * @description Tray icon menu
  * @file Menu.ahk2
@@ -6,6 +5,14 @@
  * @date 2025/07/13
  * @version 0.1.0.0
  ***********************************************************************/
+
+/***************************************************************************
+* LICENSE
+* The code in this file is distributed freely on GitHub for hobbyist 
+* users, and may be used and modified freely for personal, non-commercial 
+* use. It may not be sold or distributed with any other product or software 
+* without permission.
+****************************************************************************/
 
 #Requires AutoHotkey v2.0
 
@@ -16,6 +23,9 @@ Menu_Build()
 {
 	global oTrayMenu := A_TrayMenu
 	oTrayMenu.Delete() ;Delete standard items
+
+	oTrayMenu.Add("New", MenuActionList)
+	oTrayMenu.Add()
 	oTrayMenu.Add("&Settings...", MenuSettings)
 	oTrayMenu.Add()
 	oTrayMenu.Add("&Help...", MenuHelp)
@@ -27,6 +37,11 @@ Menu_Build()
 MenuHelp(*)
 {
 	Run("notepad readme.txt", A_ScriptDir)
+}
+
+MenuActionList(*)
+{
+
 }
 
 /**
@@ -59,8 +74,8 @@ MenuAbout(*)
 	mAbout := Map()
 	mAbout.Width := 250
 	mAbout.Height := 100
-	mAbout.X := Round((nScreenWidth / 2) - (mAbout.Width / 2))
-	mAbout.Y := Round((nScreenHeight / 2) - (mAbout.Height / 2))
+	mAbout.X := Round((A_ScreenWidth / 2) - (mAbout.Width / 2))
+	mAbout.Y := Round((A_ScreenHeight / 2) - (mAbout.Height / 2))
 
     guiAbout := Gui("-MaximizeBox -MinimizeBox", sAboutTitle) 
     guiAbout.Add("Text",, "Background Game Profile Switcher (BGPS).`n`n© 2025 David G. Dahlstrom")
@@ -84,4 +99,10 @@ MenuAbout(*)
 MenuFileExit(*)
 {
 	ExitApp()
+}
+
+SetMenuName(sOldMenuItem, sNewMenuItem)
+{
+	oTrayMenu.Rename(sOldMenuItem, sNewMenuItem)
+	oTrayMenu.Check(sNewMenuItem)
 }

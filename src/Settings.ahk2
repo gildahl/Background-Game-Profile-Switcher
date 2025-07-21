@@ -1,10 +1,20 @@
-/************************************************************************
+/******************************************************************************
  * @description Settings screen for BGPS
  * @file Settings.ahk2
  * @author © 2025 David G. Dahlstrom
  * @date 2025/07/13
  * @version 0.1.0.0
- ***********************************************************************/
+ ******************************************************************************/
+
+/******************************************************************************
+* LICENSE
+* The code in this file is distributed freely on GitHub for hobbyist 
+* users, and may be used and modified freely for personal, non-commercial 
+* use. It may not be sold or distributed with any other product or software 
+* without permission.
+*******************************************************************************/
+
+global sROMFolderOGText := ""
 
 /**
  * Create Settings Screen
@@ -20,19 +30,19 @@ Settings_BuildScreen()
 	sSettingsTitle := "Background Game Profile Switcher (BGPS) - Settings"
 
 	mSettings.Width := 900
-	mSettings.Height := 700
-	mSettings.X := Round((nScreenWidth / 2) - (mSettings.Width / 2))
-	mSettings.Y := Round((nScreenHeight / 2) - (mSettings.Height / 2))
+	mSettings.Height := 725 ;700
+	mSettings.X := Round((A_ScreenWidth / 2) - (mSettings.Width / 2))
+	mSettings.Y := Round((A_ScreenHeight / 2) - (mSettings.Height / 2))
 	guiSettings := Gui(,sSettingsTitle)
 
     guiSettings.OnEvent("Close", Settings_Close)
 
-	gcDevicesLabel := guiSettings.AddText("x" 30 " y" 10 " w" 250, "Choose device")
+	gcDevicesLabel := guiSettings.AddText("x" 30 " y" 10 " w" 250, "Device List")
 
 	gcDevices := guiSettings.AddDropDownList("x" 30 " y" 25 " w" 320 " +BackgroundWhite",)
 	fDevices_Change := Devices_Change.Bind()
 	gcDevices.OnEvent("Change", fDevices_Change)
-	gcDevices.TT := "Select the trigger device or method."
+	gcDevices.TT := "Select the device or method that will trigger the action."
 	
 	gcROMMonitorFolderLabel := guiSettings.AddText("x" 370 " y" 10 " w" 350, "ROM folder to monitor")
 	gcROMMonitorFolderEdit := guiSettings.AddEdit("x" 370 " y" 25 " w" 427 " +BackgroundWhite",)
@@ -41,6 +51,7 @@ Settings_BuildScreen()
 	gcROMMonitorFolderEdit.TT := "Enter the full path to the folder containing your MAME roms.`nThe files in this folder must have an extension of *.zip"
 
 	try gcROMMonitorFolderEdit.Text := IniRead(sIniFile, "General", "ROMFolder")
+	sROMFolderOGText := gcROMMonitorFolderEdit.Text
 
 	gcROMMonitorFolderBrowseButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidth - 30 " y" 24 " w" nButtonWidth, "Browse...")
 	fROMMonitorFolderBrowseButton_Click := ROMMonitorFolderBrowseButton_Click.Bind()
@@ -118,7 +129,7 @@ Settings_BuildScreen()
 	gcTemplateEdit_2 := guiSettings.AddComboBox("x" 60 " y" 267 " w" 592 " +BackgroundWhite",)
 	fTemplateEdit_2_Change := TemplateEdit_2_Change.Bind()
 	gcTemplateEdit_2.OnEvent("Change", fTemplateEdit_2_Change)
-	gcTemplateEdit_2.TT := "A template for the command line which will execute for this action. This template`nmay include field tags such as [profile_name] and [profile_full_name] which will be`nreplaced by the contents of the Profile name field.`n`n[profile_name]`          will be replaced by the profile name`n[profile_full_name]   will be replaced by the profile's full path and filename."
+	gcTemplateEdit_2.TT := "A template for a second command line that will execute one second after the first. This`ntemplate may include field tags such as [profile_name] and [profile_full_name] which`nwill be replaced by the contents of the Profile name 2 field.`n`n[profile_name]`          will be replaced by profile 2's name`n[profile_full_name]   will be replaced by profile 2's full path and filename."
 
 	gcTestTemplateButton_2 := guiSettings.AddButton("x" mSettings.Width - nButtonWidth*3 - 30 - 4 " y" 266 " w" nButtonWidth, "Test")
 	fTestTemplateButton_2_Click := TestTemplateButton_2_Click.Bind()
@@ -134,70 +145,104 @@ Settings_BuildScreen()
 	gcStatusLabel := guiSettings.AddText("Center " "x" 250 " y" 315 " w" 400 " h" 20)
 	gcStatusLabel.SetFont("cRed s10 w600")
 
-	gcAssignButton := guiSettings.AddButton("x" 30 " y" 325 " w" nButtonWidthWide, "Assign ROM")
+	gcAssignButton := guiSettings.AddButton("x" 30 " y" 330 " w" nButtonWidthWide, "Assign ROM")
 	fAssignButton_Click := AssignButton_Click.Bind()
 	gcAssignButton.OnEvent("Click", AssignButton_Click)
 	gcAssignButton.TT := "Press to add the ROM Monitor action`n for the [Default] rom to the table."
-	;gcAssignButton.Enabled := false
 
-	gcCancelAssignButton := guiSettings.AddButton("x" 30 + nButtonWidthWide + 5 " y" 325 " w" nButtonWidthWide, "Cancel")
+	gcCancelAssignButton := guiSettings.AddButton("x" 30 + nButtonWidthWide + 5 " y" 330 " w" nButtonWidthWide, "Cancel")
 	fCancelAssignButton_Click := CancelAssignButton_Click.Bind()
 	gcCancelAssignButton.OnEvent("Click", CancelAssignButton_Click)
 	gcCancelAssignButton.Enabled := false
 	gcCancelAssignButton.TT := "Cancel the current Assign operation."
 
-	gcListViewLabel := guiSettings.AddText("x" 30 " y" 355 " w" 300, "Action List")
-	gcListView := guiSettings.AddListView("-Multi" " r" 10 " x" 30 " y" 370 " w" mSettings.Width - 30*2 " Grid", ["Device", "Action", "Sequence", "Annunciation", "Profile", "Command Line", "Profile 2", "Command Line 2","",""])
+	gcActionListNameLabel := guiSettings.AddText("x" mSettings.Width - 150 - 30 - 100 - 5 " y" 333 " w" 100 " 0x2", "Action list name:")
+	gcActionListNameEdit := guiSettings.AddEdit("x" mSettings.Width - 150 - 30 " y" 330 " w" 150 " +BackgroundWhite",)
+	fActionListNameEdit_Change := ActionListNameEdit_Change.Bind()
+	gcActionListNameEdit.OnEvent("Change", fActionListNameEdit_Change)
+	fActionListNameEdit_LoseFocus := ActionListNameEdit_LoseFocus.Bind()
+	gcActionListNameEdit.OnEvent("LoseFocus", fActionListNameEdit_LoseFocus)
+	gcActionListNameEdit.TT := "This is the name of the Action list and will appear at the top of the tray menu.`nIf you rename this, and save it as a new list, you may load it later by launching BGPS`nwith the command line: bgps.exe <list name>."
+
+	try gcActionListNameEdit.Text := IniRead(sIniFile, "General", "ActionListName", sActionListName)
+	global sActionListName := gcActionListNameEdit.Text
+	global sUserFile := sUserFolder "\" gcActionListNameEdit.Text ".bgp"
+	SetMenuName("New", sActionListName)  
+
+	gcListView := guiSettings.AddListView("-Multi" " r" 10 " x" 30 " y" 360 " w" mSettings.Width - 30*2 " Grid", ["Device", "Action", "Sequence", "Annunciation", "Profile", "Command Line", "Profile 2", "Command Line 2","",""])
 	fListView_ItemSelect := ListView_ItemSelect.Bind()
 	gcListView.OnEvent("ItemSelect", ListView_ItemSelect)
 	ResizeColumns()
 	gcListView.TT := "This list of actions will become actively`nmonitored upon saving and exiting this dialog."
 
-	gcMoveUpButton := guiSettings.AddButton("x" 30 " y" 575 " w" nButtonWidthWide, "Move Up")
+	gcMoveUpButton := guiSettings.AddButton("x" 30 " y" 565 " w" nButtonWidthWide, "Move Up")
 	fMoveUpButton_Click := MoveUpButton_Click.Bind()
 	gcMoveUpButton.OnEvent("Click", fMoveUpButton_Click)
 	gcMoveUpButton.Enabled := false
 	gcMoveUpButton.TT := "Move the selected row up. If the action is part of a`nsequenced set, its sequence will be decremented."
 
-	gcMoveDownButton := guiSettings.AddButton("x" 30 + nButtonWidthWide + 5 " y" 575 " w" nButtonWidthWide, "Move Down")
+	gcMoveDownButton := guiSettings.AddButton("x" 30 + nButtonWidthWide + 5 " y" 565 " w" nButtonWidthWide, "Move Down")
 	fMoveDownButton_Click := MoveDownButton_Click.Bind()
 	gcMoveDownButton.OnEvent("Click", fMoveDownButton_Click)
 	gcMoveDownButton.Enabled := false
 	gcMoveDownButton.TT := "Move the selected row down. If the action is part of a`nsequenced set, its sequence will be incremented."
 
-	gcClearButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide*3 - 30 - 5*2 " y" 575 " w" nButtonWidthWide, "Clear all")
+	gcClearButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide*4 - 30 - 5*3 " y" 565 " w" nButtonWidthWide, "Clear all")
 	fClearButton_Click := ClearButton_Click.Bind()
 	gcClearButton.OnEvent("Click", fClearButton_Click)
 	gcClearButton.Enabled := false
 	gcClearButton.TT := "Clear all actions from the table."
 
-	gcEditButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide*2 - 30 - 5 " y" 575 " w" nButtonWidthWide, "Edit action")
+	gcEditButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide*3 - 30 - 5*2 " y" 565 " w" nButtonWidthWide, "Edit action")
 	fEditButton_Click := EditButton_Click.Bind()
 	gcEditButton.OnEvent("Click", fEditButton_Click)
 	gcEditButton.Enabled := false
 	gcEditButton.TT := "Copy columns from the selected`nrow back into their edit fields."
 
-	gcDeleteButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide - 30 " y" 575 " w" nButtonWidthWide, "Delete action")
+	gcDeleteButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide*2 - 30 - 5 " y" 565 " w" nButtonWidthWide, "Delete action")
 	fDeleteButton_Click := DeleteButton_Click.Bind()
 	gcDeleteButton.OnEvent("Click", fDeleteButton_Click)
 	gcDeleteButton.Enabled := false
 	gcDeleteButton.TT := "Delete the selected row from the table."
 
-	gcSaveButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide*2 - 30 - 5 " y" 650 " w" nButtonWidthWide " h" 30, "Save")
+	gcSaveButton := guiSettings.AddButton("x"  mSettings.Width - nButtonWidthWide - 30 " y" 565 " w" nButtonWidthWide, "Save list")
 	fSaveButton_Click := SaveButton_Click.Bind()
 	gcSaveButton.OnEvent("Click", fSaveButton_Click)
 	gcSaveButton.Enabled := false
-	gcSaveButton.TT := "Save all entries from the Action List table. Once you`nclose this dialog, the actions will become active."
+	gcSaveButton.TT := "Save the Action List table."
 
-	gcCloseButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide - 30 " y" 650 " w" nButtonWidthWide " h" 30, "Close")
-	fCloseButton_Click := CloseButton_Click.Bind()
-	gcCloseButton.OnEvent("Click", fCloseButton_Click)
-	gcCloseButton.TT := "Close and exit this Settings dialog."
+	gcUserPreferencesGroupBox := guiSettings.AddGroupBox("x" 30 " y" 610 " w" 275 " h" 95, "User Preferences")
 
-	gcToolTip_Checkbox := guiSettings.AddCheckbox("x" 30 " y" 660, "Show Tooltips")
+	gcApplication_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 633 " w" 250, "Operate only when this application is running.")
+    fApplication_Checkbox_Click := Application_Checkbox_Click.Bind()
+	gcApplication_Checkbox.OnEvent("Click", Application_Checkbox_Click)
+    gcApplication_Checkbox.TT := "This setting is recommended to avoid possible side`neffects when the application is not running."
+
+	try gcApplication_Checkbox.Value := IniRead(sIniFile, "General", "MonitorApplication")
+	global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Value
+	
+	gcApplicationEdit := guiSettings.AddEdit("x" 60 " y" 650 " w" 150 " +BackgroundWhite",)
+	fApplicationEdit_Change := ApplicationEdit_Change.Bind()
+	gcApplicationEdit.OnEvent("Change", fApplicationEdit_Change)
+	gcApplicationEdit.TT := "Enter the name (not including the path) of`nthe executable you want to monitor.`nFor example, RetroVRArcade.exe"
+
+	try gcApplicationEdit.Text := IniRead(sIniFile, "General", "Application")
+
+	gcApplicationBrowseButton := guiSettings.AddButton("x" 212 " y" 649 " w" nButtonWidth, "Browse...")
+	fApplicationBrowseButton_Click := ApplicationBrowseButton_Click.Bind()
+	gcApplicationBrowseButton.OnEvent("Click", ApplicationBrowseButton_Click)
+	gcApplicationBrowseButton.TT := "Browse for the executable representing the application you want to monitor."
+
+	gcToolTip_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 680, "Show Tooltips")
     fToolTip_Checkbox_Click := ToolTip_Checkbox_Click.Bind()
 	gcToolTip_Checkbox.OnEvent("Click", ToolTip_Checkbox_Click)
 	try gcToolTip_Checkbox.Value := IniRead(sIniFile, "General", "ShowToolTips", 1)	
+	gcToolTip_Checkbox.TT := "Check or uncheck to show/hide tooltips on this screen."
+    
+	gcCloseButton := guiSettings.AddButton("x" mSettings.Width - nButtonWidthWide - 30 " y" 670 " w" nButtonWidthWide " h" 30, "Close")
+	fCloseButton_Click := CloseButton_Click.Bind()
+	gcCloseButton.OnEvent("Click", fCloseButton_Click)
+	gcCloseButton.TT := "Close and exit this Settings dialog."
 }
 
 /**
@@ -205,7 +250,7 @@ Settings_BuildScreen()
  * https://www.autohotkey.com/boards/viewtopic.php?t=115995
  * ;https://wiki.libsdl.org/SDL2/APIByCategory
  */
-Settings_InitGameDevices()
+Settings_InitDevices()
 {
 	SDL2.SDL_Init(SDL_INIT_EVERYTHING := -1) ;~ Init All
 
@@ -235,14 +280,14 @@ Settings_InitGameDevices()
 			mDevices[pguid].Push(mDeviceInfo)
 		}
 
-		;Add ROM monitor
+		;Add "ROM Monitor"
 		mDevices["000"] := Array()
         mDeviceInfo := Map()
         mDeviceInfo["name"] := "ROM Monitor"
         mDeviceInfo["index"] := 1
         mDevices["000"].Push(mDeviceInfo)
 
-        ;Add a keyboard device
+        ;Add "Keyboard" device
         mDevices["001"] := Array()
         mDeviceInfo := Map()
         mDeviceInfo["name"] := "Keyboard"
@@ -284,15 +329,7 @@ Settings_ReadTemplates()
 	{
 		sJSON := JSON.stringify(aDefaultTemplates)
 
-		try
-			fTemplatesFile := FileOpen(sTemplatesFile, "w")
-		catch as Err
-		{
-			MsgBox "Can't open '" sTemplatesFile "' for writing."
-				. "`n`n" Type(Err) ": " Err.Message
-			return
-		}
-
+		fTemplatesFile := FileOpen(sTemplatesFile, "w")
 		fTemplatesFile.Write(sJSON)
 		fTemplatesFile.Close()
 	}
@@ -319,9 +356,9 @@ Settings_ReadConfig()
 	global
 
 	;read any saved configuration
-	if (FileExist(sConfigFile))
+	if (FileExist(sUserFile))
 	{
-		sJSON := FileRead(sConfigFile)
+		sJSON := FileRead(sUserFile)
 		oActions := JSON.parse(sJSON)
 		oActions.Default := ""
 		
@@ -355,20 +392,43 @@ Settings_ClearTable()
  */
 Settings_Close(*)
 {
-	ToolTip() ;kill any tooltips
+	Sleep 0
 
     CancelAssign()
 
 	result := "Yes"
-
 	if (gcSaveButton.Enabled)
-		result := MsgBox("There are unsaved changes. Are you sure you want to exit? Press 'Yes' to exit or 'No' to return to this screen.", "Close Settings?", 36)
+	{
+		result := MsgBox("There unsaved changes to the Action List. Are you sure you want to exit?`n`nPress 'Yes' to exit or 'No' to return to this screen.", "Close Settings?", 36)
+	}
+	else
+	{
+		if (gcActionListNameEdit.Text != sActionListName)
+		{
+			;In this case where there is nothing to save, but the user changed the Action List name, we just
+			;change the name and make that the new default.
+			if (FileExist(sUserFile))
+				try FileMove(sUserFile, sUserFolder "\" gcActionListNameEdit.Text ".bgp")
+			SetMenuName(sActionListName, gcActionListNameEdit.Text)
+			global sActionListName := gcActionListNameEdit.Text
+			global sUserFile := sUserFolder "\" sActionListName ".bgp"
+			IniWrite(sActionListName, sIniFile, "General", "ActionListName")
+		}
+	}
 
 	if (result == "Yes")
 	{
+		;if the rom folder was changed, reset the access dates
+		if (gcROMMonitorFolderEdit.Text != sROMFolderOGText)
+		{
+			global sROMFolderOGText := gcROMMonitorFolderEdit.Text
+			StartRomWatcher()
+		}
+
 		gcSaveButton.Enabled := false
 		guiSettings.Hide()
-		Poll()
+		ToolTip() ;kill any tooltips
+		Poll() ;resume monitoring
 	}
     else
         return true
@@ -380,11 +440,12 @@ Settings_Close(*)
  */
 Settings_FillROMList()
 {
-	aGameList := Array()
-	sGameList := ""
-	gcROMDropDown.Delete()
+	aGameList := Array()     ;the gamelist to be assigned to the list control
+	sGameList := ""          ;used to sort the list
+	gcROMDropDown.Delete()   ;make sure dropdown control is empty
 	mRomsByName["[Default]"] := "[Default]"
 
+	;Loop through all the rom files. These must have a *.zip extension
 	Loop Files gcROMMonitorFolderEdit.Text "\*.zip"
 	{
 		SplitPath(A_LoopFileName,,,, &OutNameNoExt)
@@ -397,9 +458,9 @@ Settings_FillROMList()
 		}
 	}
 
-	sGameList := Sort(sGameList)
-	sGameList := Trim(sGameList, "`n")
-	sGameList := "[Default]`n" sGameList
+	sGameList := Sort(sGameList)            ;sort the list by game name
+	sGameList := Trim(sGameList, "`n")      
+	sGameList := "[Default]`n" sGameList    ;make sure "[Default]" is at the top of the list
 	aGameList := StrSplit(sGameList, "`n")
 
 	gcROMDropDown.Add(aGameList)
@@ -419,10 +480,30 @@ SaveButton_Click(call1, call2)
 {
 	global bCancelAssign := true
 
-	result := MsgBox("Are you sure you would like to save these settings? Press 'Yes' to save or 'No' to return to the settings screen without saving.", "Save Settings?", 36)
+	result := MsgBox("Are you sure you would like to save these settings?", "Save Settings?", 4132)
 
 	if (result == "No")
 		return
+
+	if (gcActionListNameEdit.Text != sActionListName)
+	{
+		;We don't need to worry about gcActionListNameEdit.Text being blank since the field is automatically
+		;reverted to the current sActionListName by the control itself anytime it is blank and loses focus.
+
+		result := "Yes"
+		result := MsgBox("You have changed the Action list name.`n`nPress 'Yes' to rename the list or 'No' to keep the previous list and save this one as the new default.`n`nSaved Action lists may be loaded by providing their name as a command line parameter when launching BGPS.", "Action List Rename or Save New?", 4131)
+
+		if (result == "Cancel")
+			return
+
+		if (result == "Yes") ;Rename option chosen
+			try FileDelete(sUserFile)
+
+		SetMenuName(sActionListName, gcActionListNameEdit.Text)
+		global sActionListName := gcActionListNameEdit.Text
+		global sUserFile := sUserFolder "\" sActionListName ".bgp"
+		IniWrite(sActionListName, sIniFile, "General", "ActionListName")
+	}
 
 	mConfig := Map()
 
@@ -436,7 +517,7 @@ SaveButton_Click(call1, call2)
 			mInfo["command_line"] := gcListView.GetText(A_Index, 6)
             mInfo["profile_2"] := gcListView.GetText(A_Index, 7)
             mInfo["command_line_2"] := gcListView.GetText(A_Index, 8)
-			mInfo["template"] := gcListView.GetText(A_Index, 9) ;this is a hidden column
+			mInfo["template"] := gcListView.GetText(A_Index, 9)    ;this is a hidden column
 			mInfo["template_2"] := gcListView.GetText(A_Index, 10) ;this is a hidden column
 			if (!mConfig.Has(gcListView.GetText(A_Index, 1))) 
 				mConfig[gcListView.GetText(A_Index, 1)] := Map()
@@ -450,20 +531,13 @@ SaveButton_Click(call1, call2)
 
 	sJSON := JSON.stringify(mConfig)
 
-	try
-		fConfigFile := FileOpen(sConfigFile, "w")
-	catch as Err
-	{
-    	MsgBox "Can't open '" sConfigFile "' for writing."
-        	. "`n`n" Type(Err) ": " Err.Message
-    	return
-	}
+	fConfigFile := FileOpen(sUserFile, "w")
 
 	fConfigFile.Write(sJSON)
 	fConfigFile.Close()
 
 	;Now rebuild the oActions map
-	sJSON := FileRead(sConfigFile)
+	sJSON := FileRead(sUserFile)
 	global oActions := JSON.parse(sJSON)
 
 	gcSaveButton.Enabled := false
@@ -481,17 +555,12 @@ CloseButton_Click(call1, call2)
 
 Devices_Change(*)
 {
+	bControlVisible := true
+
 	if (gcDevices.Text == "ROM Monitor")
 	{
 		gcAssignButton.Text := "Assign ROM"
 		gcAssignButton.TT := "Press to add the ROM Monitor action`nfor the " mRomsByName[gcROMDropDown.Text] " rom to the table."
-		gcROMMonitorFolderBrowseButton.Visible := true
-		gcROMMonitorFolderEdit.Visible := true
-		gcROMMonitorFolderLabel.Visible := true
-		gcROMDropDownLabel.Visible := true
-		gcROMDropDown.Visible := true
-		gcROMDropDownGameInfo.Visible := true
-		gcROMDropDownGameRom.Visible := true
 	}
 	else
 	{
@@ -505,30 +574,30 @@ Devices_Change(*)
 			gcAssignButton.Text := "Assign Button"
 			gcAssignButton.TT := "Press to assign button from the " gcDevices.Text " device,`nnand add the action to the table."
 		}
-		gcROMMonitorFolderBrowseButton.Visible := false
-		gcROMMonitorFolderEdit.Visible := false
-		gcROMMonitorFolderLabel.Visible := false
-		gcROMDropDownLabel.Visible := false
-		gcROMDropDown.Visible := false
-		gcROMDropDownGameInfo.Visible := false
-		gcROMDropDownGameRom.Visible := false
+
+		bControlVisible := false
 	}
+
+	gcROMMonitorFolderBrowseButton.Visible := bControlVisible
+	gcROMMonitorFolderEdit.Visible := bControlVisible
+	gcROMMonitorFolderLabel.Visible := bControlVisible
+	gcROMDropDownLabel.Visible := bControlVisible
+	gcROMDropDown.Visible := bControlVisible
+	gcROMDropDownGameInfo.Visible := bControlVisible
+	gcROMDropDownGameRom.Visible := bControlVisible
 }
 
 TemplateEdit_Change(*)
 {
+	bControlVisible := true
+
 	gcTestTemplateButton.TT := "Test the command line:`n" GetFormattedCommandLine(gcProfileEdit.Text, gcTemplateEdit.Text)
 
     if (gcTemplateEdit.Text == "")
-    {
-        gcAddTemplateButton.Enabled := false
-        gcRemoveTemplateButton.Enabled := false
-    }
-    else
-    {
-        gcAddTemplateButton.Enabled := true
-        gcRemoveTemplateButton.Enabled := true
-    }
+		bControlVisible := false
+
+	gcAddTemplateButton.Enabled := bControlVisible
+    gcRemoveTemplateButton.Enabled := bControlVisible
 }
 
 TemplateEdit_2_Change(*)
@@ -610,10 +679,9 @@ RemoveTemplateButton_Click(*)
 	try {
 		gcTemplateEdit.Choose(last)
 	}
-	catch as Err
+	catch
 	{
 		try gcTemplateEdit.Choose(last-1)
-		;return
 	}
 
 	AddTemplates()
@@ -753,6 +821,7 @@ Profile_2_Checkbox_Click(call1, call2)
 ToolTip_Checkbox_Click(call1, call2)
 {
 	IniWrite(gcToolTip_Checkbox.Value, sIniFile, "General", "ShowToolTips")
+	ToolTip()
 }
 
 ProfileEdit_Change(*)
@@ -818,6 +887,36 @@ CancelAssignButton_Click(call1, call2)
     CancelAssign()
 }
 
+Application_Checkbox_Click(call1, call2)
+{
+	IniWrite(gcApplication_Checkbox.Value, sIniFile, "General", "MonitorApplication")
+	global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Value
+}
+
+ApplicationEdit_Change(call1, call2)
+{
+	IniWrite(gcApplicationEdit.Text, sIniFile, "General", "Application")
+}
+
+ApplicationBrowseButton_Click(call1, call2)
+{
+	sApplicationPath := FileSelect("S",,, "Executables (*.exe)")
+	SplitPath(sApplicationPath,,,&OutExt, &OutNameNoExt)
+	gcApplicationEdit.Text := OutNameNoExt "." OutExt
+	IniWrite(gcApplicationEdit.Text, sIniFile, "General", "Application")
+}
+
+ActionListNameEdit_Change(*)
+{
+	
+}
+
+ActionListNameEdit_LoseFocus(*)
+{
+	if (gcActionListNameEdit.Text == "")
+		gcActionListNameEdit.Text := sActionListName
+}
+
 /**
  * Gets the key that was pressed during the Assign process of the "Keyboard" device.
  * @param HotkeyName 
@@ -865,7 +964,7 @@ AssignButton_Click(call1, call2)
         return
     }
    
-    ;AHK doesn't support union, need Buffer to receive SDL_Event
+    ;Buffer to receive SDL_Event
     evtBuffer := Buffer(56,0)
 
     ;purge the buffer
@@ -1061,45 +1160,29 @@ SyncTemplates()
 
 ToggleCheckedState(state)
 {
+	bControlEnabled := false
+
     if (state == 1)
-    {
-        gcProfileLabel_2.Enabled := true
-        gcProfileEdit_2.Enabled := true
-        gcProfileBrowseButton_2.Enabled := true
-        gcTemplateLabel_2.Enabled := true
-        gcTemplateEdit_2.Enabled := true
-		gcTestTemplateButton_2.Enabled := true
-        gcProfile_2_Checkbox.Value := 1
-    }
-    else
-    {
-        gcProfileLabel_2.Enabled := false
-        gcProfileEdit_2.Enabled := false
-        gcProfileBrowseButton_2.Enabled := false
-        gcTemplateLabel_2.Enabled := false
-        gcTemplateEdit_2.Enabled := false
-		gcTestTemplateButton_2.Enabled := false
-        gcProfile_2_Checkbox.Value := 0
-    }
+		bControlEnabled := true
+
+	gcProfileLabel_2.Enabled := bControlEnabled
+	gcProfileEdit_2.Enabled := bControlEnabled
+	gcProfileBrowseButton_2.Enabled := bControlEnabled
+	gcTemplateLabel_2.Enabled := bControlEnabled
+	gcTemplateEdit_2.Enabled := bControlEnabled
+	gcTestTemplateButton_2.Enabled := bControlEnabled
+	gcProfile_2_Checkbox.Value := bControlEnabled
+    
 }
 
 AddTemplates()
 {
-	global iTemplatePick
-
 	aTemplates := Array()
 	aTemplates := ControlGetItems(gcTemplateEdit)
 	
 	sJSON := JSON.stringify(aTemplates)
 
-	try
-		fTemplatesFile := FileOpen(sTemplatesFile, "w")
-	catch as Err
-	{
-		MsgBox "Can't open '" sTemplatesFile "' for writing."
-			. "`n`n" Type(Err) ": " Err.Message
-		return
-	}
+	fTemplatesFile := FileOpen(sTemplatesFile, "w")
 
 	fTemplatesFile.Write(sJSON)
 	fTemplatesFile.Close()
@@ -1108,8 +1191,7 @@ AddTemplates()
 	sJSON := FileRead(sTemplatesFile)
 	global oTemplates := JSON.parse(sJSON)
 
-    iTemplatePick := aTemplates.Length
-	return aTemplates.Length
+    return aTemplates.Length
 }
 
 UpdateAssignButtonState()

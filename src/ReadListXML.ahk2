@@ -1,10 +1,17 @@
 /************************************************************************
  * @description Class to read truncated MAME ListXML file, Games.xml
  * @file ReadListXML.ahk2
- * @author © 2025 David G. Dahlstrom
+ * @author David G. Dahlstrom
  * @date 2025/07/13
  * @version 0.1.0.0
  ***********************************************************************/
+
+/***********************************************************************
+* LICENSE
+* The code in this file is free of any license considerations and is
+* regarded by its author to be in the public domain.
+************************************************************************/
+
 #Requires AutoHotkey v2.0
 
 /*
@@ -53,7 +60,7 @@ class ReadListXML
 						}
 						catch as e
 						{
-							;Throw("ERROR: XML Processing Error (MSXML2.DOMDocument.3.0): " FormatErrorMessage(e) "`n", -1)
+							Throw("ERROR: XML Processing Error (MSXML2.DOMDocument.3.0): " AppLog.FormatErrorMessage(e) "`n", -1)
 						}				
 					}
 
@@ -109,7 +116,7 @@ class ReadListXML
 							}							
 						}
 						catch as e {
-							;LogEntry("WARNING: Unexpected XML read error: " FormatErrorMessage(e) "`n")
+							AppLog.LogLine("WARNING: Unexpected XML read error: " AppLog.FormatErrorMessage(e) "`n")
 							break
 						}
 					}

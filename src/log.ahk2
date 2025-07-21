@@ -1,0 +1,104 @@
+/**********************************************************************
+ * @description Application Log class
+ * @file log.ahk2
+ * @author David G. Dahlstrom
+ * @date 2025/07/13
+ * @version 0.1.0.0
+  **********************************************************************/
+
+/***********************************************************************
+* LICENSE
+* The code in this file is free of any license considerations and is
+* regarded by its author to be in the public domain.
+************************************************************************/
+
+#Requires AutoHotkey v2.0
+
+class AppLog
+{
+    static _sLogFile := ""
+    static _iStartTick := 0
+
+    static Init(sLogFileName, sAppName)
+    {
+        this._iStartTick := A_TickCount
+        this._sLogFileName := sLogFileName
+
+        sLogLine := ""
+
+        SplitPath(sLogFileName, &OutName, &OutDir, &OutExt, &OutNameNoExt, &OutDrive)
+
+        if (!DirExist(OutDir))
+        {
+            try
+            {
+                DirCreate OutDir
+            }
+            catch
+            {
+                sLogLine := "NOTICE: Failed to create folder, " OutDir "`n"
+            }
+            else        
+            {
+                sLogLine := "INFO: Created folder, " OutDir "`n"  
+            }         
+        }
+
+        if (FileExist(sLogFileName))
+            FileDelete(sLogFileName)
+
+        sLogEntry := "INFO: " sAppName " started on: " FormatTime(,"LongDate") ", at " FormatTime(,"Time") "`n"
+        iEntryLen := StrLen(sLogEntry)
+        this.LogLine(sLogEntry)
+        sSep := this.RepeatChar("=", iEntryLen)
+        this.LogLine(sSep "`n")
+        this.LogLine("`n")
+        if (sLogLine)
+            this.LogLine(sLogLine)
+    }
+
+    static LogLine(logString, continueLine:=false)
+    {
+        elapsedTime := A_TickCount - this._iStartTick
+        lenElapsedTime := StrLen(elapsedTime)
+        
+        if (lenElapsedTime > 5)
+            formatString := "{1:0" . lenElapsedTime . "}"
+        else
+            formatString := "{1:05}"
+
+        elapsedTime := Format(formatString, elapsedTime)
+        elapsedTime := SubStr(elapsedTime,1,StrLen(elapsedTime)-3) . "." . SubStr(elapsedTime, StrLen(elapsedTime)-2, 3)
+
+        if (continueLine)
+            FileAppend logString, this._sLogFileName
+        else
+            FileAppend "[" . elapsedTime . "] " . logString, this._sLogFileName
+
+        if (InStr(logString, "ERROR:"))
+            SoundBeep()
+
+        return
+    }
+
+    static FormatErrorMessage(e)
+    {  
+        e_file := e.file ? e.file : ""
+        e_line := e.line ? ", Line: " . e.line : ""
+        e_what := e.what ? ", " . e.what : ""
+        e_message := e.message ? ", Message: " . e.message : ""
+        e_extra := e.extra ? ", Extra: " . e.extra : ""
+        
+        retValue := e_file . e_line . e_what . e_message . e_extra
+        
+        return retValue
+    }
+
+    static RepeatChar(val, length)
+    {
+        result := ""
+        Loop length
+            result := result . val
+        return result
+    }
+}

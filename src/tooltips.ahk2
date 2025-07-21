@@ -1,0 +1,29 @@
+#Requires AutoHotkey v2.0
+
+;========================================================================================
+;Handle the tool-tips
+;See https://www.autohotkey.com/boards/viewtopic.php?style=19&f=82&t=116086&p=517471
+;========================================================================================
+OnMouseEvent(wp, lp, msg, hwnd)
+{
+	if (!gcToolTip_Checkbox.Value)
+		return
+
+    static TME_LEAVE := 0x2, onButtonHover := false
+    if msg = WM_MOUSEMOVE && !onButtonHover
+    {
+        TRACKMOUSEEVENT := Buffer(8 + A_PtrSize * 2)
+        NumPut('UInt', TRACKMOUSEEVENT.Size,
+               'UInt', TME_LEAVE,
+               'Ptr', hwnd,
+               'Ptr', 10, TRACKMOUSEEVENT)
+        DllCall('TrackMouseEvent', 'Ptr', TRACKMOUSEEVENT)
+        try
+            ToolTipContents:=GuiCtrlFromHwnd(hwnd).TT, ToolTip(ToolTipContents)
+        catch
+            ToolTipContents:=""
+    }
+
+    if msg = WM_MOUSELEAVE
+        ToolTip() ; outside gui
+}

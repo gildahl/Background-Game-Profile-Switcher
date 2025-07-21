@@ -1,10 +1,18 @@
-/************************************************************************
+/*****************************************************************************
  * @description Background Game Profile Switcher (BGPS)
  * @file bgps.ahk2
  * @author © 2025 David G. Dahlstrom
  * @date 2025/07/13
  * @version 0.1.0.0
- ***********************************************************************/
+  ****************************************************************************/
+
+/******************************************************************************
+* LICENSE
+* The code in this file is distributed freely on GitHub for hobbyist 
+* users, and may be used and modified freely for personal, non-commercial 
+* use. It may not be sold or distributed with any other product or software 
+* without permission.
+*******************************************************************************/
 
 /***********************************************************************
 * Compiler directives
@@ -28,6 +36,8 @@ global CodeVersion := "0.1.0.0"
 #include Settings.ahk2
 #include WatchFolder-v2.ahk2
 #include ReadListXML.ahk2
+#include Log.ahk2
+#include Tooltips.ahk2
 
 TraySetIcon "joystick.ico"
 
@@ -41,38 +51,138 @@ global oVoice := voice_class() ;initialize speech support
 global bCancelAssign := false
 global bCancelPoll := false
 global bActive := false
+global bOnlyMonitorWhenApplicationLoaded := false
+global bUpdatedROMFolder := false
+global sActionListName := "Arcade Controller"
 
-global oActions
-global oTemplates
-global iResumeActivityTickCount := 0
-global iTemplatePick := 1
-global aDevices := Array() ;Holds the devices to display in the list
-global mDeviceIndex := Map() ;Holds the indexes of the devices in the list
-global mDevices := Map() ;Holds all device info
-global mRomsByName := Map()
+;global inits
+global iRestartDelay := 0           ;Delay in between application close and restart (in ms)
+global iCommandLineDelay := 1000    ;Delay in between two consecutive command line calls (in ms)
 
-global nScreenWidth := A_ScreenWidth
-global nScreenHeight := A_ScreenHeight
+global oTemplates                   ;Object used by the JSON parser to hold the Template list
+global oTweaks                      ;Object used by the JSON parser to hold the Tweaks list
+global oActions	:= Map()			;Object used by the JSON parser to hold the Actions list
+global aDevices := Array()          ;Holds the list of devices (a.k.a. Action Sources)
+global mDeviceIndex := Map()        ;Holds the indexes of the devices in the list
+global mDevices := Map()            ;Holds info for all devices in the list
+global mRomsByName := Map()         ;A dictionary allowing a rom to be looked up by its description
+global aDefaultTemplates := Array() ;The set of default command line templates
 
-global sConfigFile := A_ScriptDir "\bgps.json"
-global sTemplatesFile := A_ScriptDir "\templates.json"
-global sIniFile := A_ScriptDir "\bgps.ini"
-global sGamesXMLFile := A_ScriptDir "\games.xml"
-
-global aDefaultTemplates := Array()
+;Populate the default template array
 aDefaultTemplates.Push('"C:\Program Files\Virtual Controller\VirtualController.exe" /load [profile_name] /run /minimize')
 aDefaultTemplates.Push('"C:\Program files\Ultramap\Ultramap.exe" [profile_name]')
 
-Menu_Build()  ;Build tray menu
+global sApplicationName := "RetroVRArcade.exe"
 
-Settings_BuildScreen()
-Settings_InitGameDevices()
-Settings_ReadTemplates()
-Settings_ReadConfig()
-Settings_FillRomList()
+;folder defaults
+global sConfigFolder := A_ScriptDir "\config"
+global sUserFolder := A_ScriptDir "\user"
+global sLogFolder := A_ScriptDir "\log"
 
-StartRomWatcher()
-Poll()
+;owned filename defaults
+global sUserFile := sUserFolder "\Arcade Controller.bgp"
+global sTemplatesFile := sConfigFolder "\templates.json"
+global sTweaksFile := sConfigFolder "\tweaks.json"
+global sIniFile := sConfigFolder "\bgps.ini"
+global sGamesXMLFile := A_ScriptDir "\games.xml"
+
+AppLog.Init(sLogFolder "\log.txt", "BGPS") ;initialize the application log
+OnError LogError ;deal with unhandled exceptions
+
+;Create configuration folder if it doesn't already exist
+CreateDirAndLog(sConfigFolder)
+CreateDirAndLog(sUserFolder)
+
+;Process the command line if any args 
+;Currently, the only supported parameter is the name of a specific named/saved *.bgp files
+if (A_Args.Length > 0)
+{
+	AppLog.LogLine("INFO: Ran with command line parameter: `"" A_Args[1] "`"`n") 
+	SplitPath(A_Args[1],,,,&sArgNoExt) 
+	loop files sUserFolder "\*.bgp"
+	{		
+		SplitPath(A_LoopFileName,,,,&sLoopFileNoExt)
+		if (A_LoopFileName = A_Args[1] || sLoopFileNoExt = A_Args[1])
+		{
+			IniWrite(sLoopFileNoExt, sIniFile, "General", "ActionListName")
+			break
+		}
+	}
+}
+else
+{
+	AppLog.LogLine("INFO: Ran with no command line parameter`n") 
+}
+
+;==============================
+;  Main Application Startup
+;==============================
+Menu_Build()                 ;Build tray menu
+LoadInit()				     ;Load custom initializations
+LoadTweaks()				 ;Load custom tweaks
+Settings_BuildScreen()       ;Build Settings screen
+Settings_InitDevices()       ;Get and populate the list of devices (a.k.a. Action Sources)
+Settings_ReadTemplates()     ;Populate Template list from JSON file if available
+Settings_ReadConfig()        ;Populate Action list from JSON file if available
+Settings_FillRomList()       ;Populate the ROM list 
+StartRomWatcher()            ;Begin monitoring the rom folder             
+Poll()                       ;Start the button and keyboard polling loop
+
+/**
+ * Load general application settings from bgps.ini.
+ * Set defaults when not found.
+ */
+LoadInit()
+{
+	;Init delay between closing an app and restarting it to 500ms
+	try {
+		global iRestartDelay := IniRead(sIniFile, "General", "RestartDelay")
+	}
+	catch {
+		IniWrite(iRestartDelay, sIniFile, "General", "RestartDelay")
+	}
+
+	;Init delay between two consecutive command line calls to 1000ms
+	try {
+		global iCommandLineDelay := IniRead(sIniFile, "General", "CommandLineDelay")
+	}
+	catch {
+		IniWrite(iCommandLineDelay, sIniFile, "General", "CommandLineDelay")
+	}
+}
+
+/**
+ * Load any application-specific tweaks from tweaks.json into oTweaks.
+ * Create a default tweaks.json if not found.
+ */
+LoadTweaks()
+{
+	if (FileExist(sTweaksFile))
+	{
+		sJSON := FileRead(sTweaksFile)
+		global oTweaks := JSON.parse(sJSON)
+	}
+	else
+	{
+		mTweaks := Map()
+
+		;List applications that need to be restarted each time they are run.
+		mTweaks["restart"] := Map()
+		mTweaks["restart"]["VirtualController.exe"] := Map() 
+		mTweaks["restart"]["Add new exe here if needed"] := Map()
+
+		sJSON := JSON.stringify(mTweaks)
+
+		fTweaksFile := FileOpen(sTweaksFile, "w")
+
+		fTweaksFile.Write(sJSON)
+		fTweaksFile.Close()
+
+		;Now rebuild the oActions map
+		sJSON := FileRead(sTweaksFile)
+		global oTweaks := JSON.parse(sJSON)
+	}
+}
 
 /**
  * Initialize the ROM folder watcher. This monitors all the *.zip rom files in the folder for
@@ -81,6 +191,7 @@ Poll()
  */
 StartRomWatcher()
 {
+	attrib := ""
 	try	attrib := DirExist(gcROMMonitorFolderEdit.Text)  
 	
 	if (attrib)
@@ -94,16 +205,24 @@ StartRomWatcher()
 
 		;Register the folder whose files will be monitored for being accessed. 32 watches for changes
 		;to the file access timestamp, and will notify FileAccess_Callback() when such detections are made.
-		WatchFolder(gcROMMonitorFolderEdit.Text, RomAccess_Callback, False, 32)
+		WatchFolder(gcROMMonitorFolderEdit.Text, RomAccess_Event, False, 32)
+	}
+	else
+	{
+		if (gcROMMonitorFolderEdit.Text == "")
+			AppLog.LogLine("INFO: ROM Folder: `"" gcROMMonitorFolderEdit.Text "`" is not configured.`n")
+		else
+			AppLog.LogLine("INFO: ROM Folder: `"" gcROMMonitorFolderEdit.Text "`" is invalid.`n")
 	}
 }
 
 /**
- * Callback function called by the WatchFolder folder/file monitor
+ * Function called by the WatchFolder folder/file monitor whenever the access
+ * timestamp on a file is changed.
  * @param Folder - The folder in which a change was detected
  * @param Changes - The specific changes detected, including the name of the file accessed.
  */
-RomAccess_Callback(Folder, Changes) 
+RomAccess_Event(Folder, Changes) 
 {
     static tLastFileName := ""
 
@@ -121,7 +240,10 @@ RomAccess_Callback(Folder, Changes)
 
 	;Force the last access timestamp to a week ago. This is to overcome an issue in which
 	;Windows does not natively update this timestamp if it is too recent, so lets make it look old so it does.	
-	try FileSetTime DateAdd(A_Now, -7, "days"), sROMFile, "A"
+	;The Sleep 100 statement is to prevent the occasional failure of FileSetTime to set the timestamp,
+	;possibly due to the file being briefly inaccessible after being accessed.
+	Sleep 100
+	FileSetTime DateAdd(A_Now, -7, "days"), sROMFile, "A"
 
 	tLastFileName := sROMFile
 
@@ -140,21 +262,48 @@ RomAccess_Callback(Folder, Changes)
 	if (oAction.Key == "")
 		oAction := GetAction("ROM Monitor", "[Default]", mIndexer)
 	
-	RunAction(oAction)
+	RunAction(oAction) ;execute the action
 }
 
 /**
- * Main handler for game controller buttons and keybord key presses.
+ * This gets called every 250ms when active. It is active whenever the main monitoring Poll() loop is 
+ * not running and the bOnlyMonitorWhenApplicationLoaded is set to true. If it detects the application has
+ * started/resumed running, it will kill its timer and resume monitoring by calling Poll().
+ */
+ApplicationProcessCheck_Callback()
+{
+	global bCancelPoll
+
+	;Terminate this timer if bCancelPoll gets set
+	if (bCancelPoll)
+	{
+		bCancelPoll := false
+		SetTimer(ApplicationProcessCheck_Callback, 0)
+	}
+
+	;if we are only supposed to monitor when an application is loaded and it is
+	;now loaded, then call Poll() to start/resume monitoring
+	if (bOnlyMonitorWhenApplicationLoaded && ProcessExist(sApplicationName))
+	{
+		;terminate this timer since Poll() will now take up monitoring 
+		;whether the app subsequently gets turned off
+		SetTimer(ApplicationProcessCheck_Callback, 0) 
+		Poll() 
+	}
+}
+
+/**
+ * Main handler for game controller buttons and keyboard key presses.
  * 
- * Setting the global bCancelPoll = false disables polling. 
- * Calling Poll() again will resume polling.
+ * Set the global bCancelPoll := false to disable polling. 
+ * Call Poll() to start/resume polling.
  */
 Poll()
 {
 	global bCancelPoll
 	global bActive := true
 
-	;Register hotkeys for keypress handling
+	;Register plain old AHK hotkeys for keypress handling
 	for device, buttons in oActions
 	{
 		for button, sequences in buttons
@@ -164,7 +313,7 @@ Poll()
 		}
 	}
 
-	; Handle controller button presses. Uses SDL2 methods that are 
+	; To handle controller button presses we use SDL2 methods that are 
 	; improvements over native AHK, thanks to these sources:
 	; https://www.autohotkey.com/boards/viewtopic.php?t=115995
 	; https://wiki.libsdl.org/SDL2/APIByCategory
@@ -176,19 +325,30 @@ Poll()
 	SDL2.SDL_PumpEvents()
 	SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
    
-	mIndexer := Map()
+	mIndexer := Map() ;Used to keep track of button/key sequences
 
-    ;Handle the SDL_Event
+    ;Poll for SDL_Event 
     loop
     {
-       PollEvent := SDL2.SDL_PollEvent(evtBuffer)
-       evt := SDL2DLL.SDL_Event(evtBuffer)
+		PollEvent := SDL2.SDL_PollEvent(evtBuffer)
+		evt := SDL2DLL.SDL_Event(evtBuffer)
 
-	   if (bCancelPoll)
-	   {
+		;if we are only supposed to monitor when an application is loaded and it is
+		;not currently loaded, then cancel the Poll() loop, and register a timer
+		;to wait for the application to be loaded.
+		if (bOnlyMonitorWhenApplicationLoaded && !ProcessExist(sApplicationName))
+		{
+			bCancelPoll := true
+
+			;Start a monitor to poll the application for its resumption
+			SetTimer(ApplicationProcessCheck_Callback)
+		}
+
+		if (bCancelPoll)
+		{
 			SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
 
-			;disable hotkeys
+			;disable hotkeys too
 			for device, buttons in oActions
 			{
 				for button, sequences in buttons
@@ -198,13 +358,15 @@ Poll()
 				}
 			}
 
+			;set our global flags
 			bCancelPoll := false 
 			bActive := false
 			break
-	   }
-    
-       if (PollEvent)
-       {
+		}
+
+		;Handle SDL button press events
+		if (PollEvent)
+		{
 			if (evt.type == SDL_EventType.SDL_QUIT) ; Close event
 			{
 				SDL2.SDL_Quit()		 
@@ -215,9 +377,9 @@ Poll()
 				oAction := GetAction(aDevices[mDeviceIndex[evt.jbutton.which]], evt.jbutton.button, mIndexer)
 				SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)				
 				RunAction(oAction)				
-            }
-        }
-        SDL2.SDL_Delay(1)
+			}
+		}
+		SDL2.SDL_Delay(1)
     }
 }
 
@@ -291,6 +453,8 @@ GetAction(sDevice, sAction, mIndexer)
 
 	oAction := Map()
 	oAction.Key := annunc cl cl_2
+	oAction.Device := sDevice
+	oAction.Action := sAction
 	oAction.Annunciation := annunc
 	oAction.CommandLine := cl
 	oAction.CommandLine_2 := cl_2
@@ -313,12 +477,15 @@ RunAction(oAction)
 		{
 			oVoice.Speak(oAction.Annunciation)			
 			RunCommandLine(oAction.CommandLine)
-		}
 
-		if (oAction.CommandLine_2)
-		{
-			Sleep(1000)
-			RunCommandLine(oAction.CommandLine_2)
+			if (oAction.CommandLine_2)
+			{
+				Sleep iCommandLineDelay
+				RunCommandLine(oAction.CommandLine_2)
+				AppLog.LogLine("INFO: Source: " oAction.Device ", Action: " oAction.Action ", CommandLine: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 "`n")
+			}
+			else 
+				AppLog.LogLine("INFO: Source: " oAction.Device ", Action: " oAction.Action ", CommandLine: " oAction.CommandLine "`n")
 		}
 
 		sLastActionKey := oAction.Key
@@ -326,7 +493,7 @@ RunAction(oAction)
 }
 
 /**
- * Execute a command line
+ * Execute the command line
  * @param cl - The command line to execute
  */
 RunCommandLine(cl)
@@ -336,42 +503,111 @@ RunCommandLine(cl)
 	OutDir := StrReplace(OutDir, '"')
 	OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
 
-	;VirtualController needs to be restarted otherwise it invokes multiple instances.
-	if (OutFileName == "VirtualController.exe")
+	;Check the tweaks.json file to see if this app needs to be restarted
+	sExeName := ""
+	for tweak, j in oTweaks
 	{
-		if (ProcessExist("VirtualController.exe"))
+		if (tweak == "restart")
 		{
-			ProcessClose "VirtualController.exe"
+			for exe_name, m in j
+			{
+				if (exe_name == OutFileName)
+				{
+					sExeName := exe_name
+					break 2
+				}
+			}
 		}
 	}
+
+	;Restart apps that would invoke multiple instances.	
+	if (sExeName)
+		if (ProcessExist(sExeName))
+			ProcessClose(sExeName)
+	
+	Sleep iRestartDelay
 
 	try Run cl, OutDir
 }
 
-;========================================================================================
-;Handle the tool-tips
-;See https://www.autohotkey.com/boards/viewtopic.php?style=19&f=82&t=116086&p=517471
-;========================================================================================
-OnMouseEvent(wp, lp, msg, hwnd)
+/**
+ * Delete a file or folder and log the activity
+ * @param t - is "D" (directory) or "F" (file)
+ * @param f - is full name and path of the file or folder/directory. 
+ * @returns {Integer} - 0 is success, 1 is failure, -1 means file doesn't exist
+ */
+DeleteAndLog(t, f)
 {
-	if (!gcToolTip_Checkbox.Value)
-		return
+	if (t == "F")
+	{
+		if (FileExist(f)) 
+		{
+			try {
+				FileDelete(f)
+			}
+			catch as e {
+				AppLog.LogLine("INFO: File could not be deleted: " f ". Error was: " AppLog.FormatErrorMessage(e) "`n")
+				return 1
+			}
+			else {
+				AppLog.LogLine("INFO: Deleted file: " f "`n")
+				return 0
+			}
+		}
+	}
+	if (t == "D")
+	{
+		if (FileExist(f)) 
+		{
+			try {
+				DirDelete(f, true) ;true deletes even if files exist in folder
+			}
+			catch as e {
+				AppLog.LogLine("INFO: Folder could not be deleted: " f ". Error was: " AppLog.FormatErrorMessage(e) "`n")
+				return 1
+			}
+			else {
+				AppLog.LogLine("INFO: Deleted folder: " f "`n")
+				return 0
+			}
+		}
+	}
 
-    static TME_LEAVE := 0x2, onButtonHover := false
-    if msg = WM_MOUSEMOVE && !onButtonHover
+	return -1
+}
+
+/**
+ * Create a directory and log the activity
+ * @param d - The name of the directory
+ * @returns {Integer} 
+ */
+CreateDirAndLog(d)
+{
+    if (!InStr(FileExist(d), "D"))
     {
-        TRACKMOUSEEVENT := Buffer(8 + A_PtrSize * 2)
-        NumPut('UInt', TRACKMOUSEEVENT.Size,
-               'UInt', TME_LEAVE,
-               'Ptr', hwnd,
-               'Ptr', 10, TRACKMOUSEEVENT)
-        DllCall('TrackMouseEvent', 'Ptr', TRACKMOUSEEVENT)
         try
-            ToolTipContents:=GuiCtrlFromHwnd(hwnd).TT, ToolTip(ToolTipContents)
+        {
+            DirCreate d
+        }
         catch
-            ToolTipContents:=""
+        {
+            AppLog.LogLine("NOTICE: Failed to create folder, " d "`n")
+            return false
+        }
+        else        
+        {
+            AppLog.LogLine("INFO: Created folder, " d "`n")  
+            return true
+        }         
     }
 
-    if msg = WM_MOUSELEAVE
-        ToolTip() ; outside gui
+    return true
+}
+
+
+;Log otherwise unhandled errors (spawed by OnError)
+LogError(e, mode)
+{
+    AppLog.LogLine("ERROR: Unhandled exception: " AppLog.FormatErrorMessage(e) "`n")
+    ExitApp
 }
