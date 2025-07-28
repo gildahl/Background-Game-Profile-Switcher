@@ -19,6 +19,10 @@ Installation
 ============
 To install BGPS, extract the distribution zip file to a folder on your Windows computer that has read/write access. The folder can be called whatever you want. When you run the executable (BGPS.exe), you will see a joystick icon in the Windows tray indicating normal background mode is active. Right clicking on this icon will show a menu of options. When running for the first time you will want to choose the "Settings..." option to configure the application.
 
+Log
+===
+See the log.txt file in the \log subfolder if needed for troubleshooting. This log is overwritten at the start of every run. A beep will be sounded if an error is written to the file. When reporting any issues with BGPS, be sure to include the last log with your description of the problem. 
+
 User Preferences: Tooltips
 ==========================
 In addition to this documentation file, the Settings screen implements tooltips on all controls to explain their operation. If you no longer need the tooltips, you can turn them off by unchecking the "Show Tooltips" checkbox.
@@ -29,7 +33,7 @@ It is recommended to enter the name of the executable that you will be running B
 
 Configuration
 =============
-BGPS offers two different modes of operation. The first is a "ROM Monitor" mode that will execute user defined command line actions whenever rom files are loaded by MAME. Since this mode provides full automation, there's a good chance that "ROM Monitor" mode is the only mode you will ever need. 
+BGPS offers two different modes of operation. The first is a "ROM Monitor" mode that will execute user defined command line actions whenever rom files are loaded by MAME. Since this mode provides full automation, there's a good chance that "ROM Monitor" mode may be the only mode you need. 
 
 The second mode provides the option to trigger command line actions manually when a game controller button or keyboard key is pressed. Both "ROM Monitor" and keyboard/button mode can be active simultaneously.
 
@@ -70,7 +74,10 @@ Additional Notes:
 
 Understanding the Action List Table
 ===================================
-Each time you use the "Assign" button to create a new action, that action will be added to the Action List table. This table contains all of the actions which will become the active set once you save and close the Settings screen.
+Each time you use the "Assign" button to create a new action, that action will be added to the Action List table. When you complete the table, you may press the "Save list" button to save it.  When it is saved, it will be saved in the \user folder as a *.bgp file having the name specified in the "Activity list name" field. By default this name is Arcade Controller (which will be saved as "Arcade Controller.bgp"). Optionally, if you switch between multiple controllers for use with your emulator, you could save different action lists under different names. These can then be loaded in the future by creating a shortcut that provides the name as a command line parameter when launching BGPS.  For example,
+
+BGPS.exe "Arcade Controller" or
+BGPS.exe "Gamepad"
 
 The Action list table contains the following columns:
 
@@ -134,10 +141,6 @@ Removes the selected row from the table.
 Save actions
 ------------
 Save all actions in the table to the bgps.json file. This is the configuration file that will then be used in normal background operation mode once the Settings screen is closed. 
-
-License
-=======
-This software is distributed freely on GitHub for hobbyist users, and may be used and modified freely for personal, non-commercial use. It may not be sold or distributed with any other product or software without permission. Some included source code files by myself or third parties may provide more permissive or public domain licenses. See the individual source code files for details.
 
 
 

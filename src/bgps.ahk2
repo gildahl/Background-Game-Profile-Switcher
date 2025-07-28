@@ -52,8 +52,6 @@ global bCancelAssign := false
 global bCancelPoll := false
 global bActive := false
 global bOnlyMonitorWhenApplicationLoaded := false
-global bUpdatedROMFolder := false
-global sActionListName := "Arcade Controller"
 
 ;global inits
 global iRestartDelay := 0           ;Delay in between application close and restart (in ms)
@@ -70,7 +68,7 @@ global aDefaultTemplates := Array() ;The set of default command line templates
 
 ;Populate the default template array
 aDefaultTemplates.Push('"C:\Program Files\Virtual Controller\VirtualController.exe" /load [profile_name] /run /minimize')
-aDefaultTemplates.Push('"C:\Program files\Ultramap\Ultramap.exe" [profile_name]')
+aDefaultTemplates.Push('"C:\Program Files (x86)\Ultramap\Ultramap.exe" [profile_full_name]')
 
 global sApplicationName := "RetroVRArcade.exe"
 
@@ -117,14 +115,15 @@ else
 ;==============================
 ;  Main Application Startup
 ;==============================
-Menu_Build()                 ;Build tray menu
+
+TrayMenu.BuildMenu()         ;Build tray menu
 LoadInit()				     ;Load custom initializations
 LoadTweaks()				 ;Load custom tweaks
-Settings_BuildScreen()       ;Build Settings screen
-Settings_InitDevices()       ;Get and populate the list of devices (a.k.a. Action Sources)
-Settings_ReadTemplates()     ;Populate Template list from JSON file if available
-Settings_ReadConfig()        ;Populate Action list from JSON file if available
-Settings_FillRomList()       ;Populate the ROM list 
+Settings.BuildScreen()       ;Build Settings screen
+Settings.InitDevices()       ;Get and populate the list of devices (a.k.a. Action Sources)
+Settings.ReadTemplates()     ;Populate Template list from JSON file if available
+Settings.ReadActionList()    ;Populate Action list from JSON file if available
+Settings.FillRomList()       ;Populate the ROM list 
 StartRomWatcher()            ;Begin monitoring the rom folder             
 Poll()                       ;Start the button and keyboard polling loop
 
@@ -168,7 +167,7 @@ LoadTweaks()
 
 		;List applications that need to be restarted each time they are run.
 		mTweaks["restart"] := Map()
-		mTweaks["restart"]["VirtualController.exe"] := Map() 
+		mTweaks["restart"]["VirtualController.exe"] := Map()
 		mTweaks["restart"]["Add new exe here if needed"] := Map()
 
 		sJSON := JSON.stringify(mTweaks)
@@ -285,6 +284,8 @@ ApplicationProcessCheck_Callback()
 	;now loaded, then call Poll() to start/resume monitoring
 	if (bOnlyMonitorWhenApplicationLoaded && ProcessExist(sApplicationName))
 	{
+		AppLog.LogLine("INFO: Application, `"" sApplicationName "`"was detected.`n" )
+
 		;terminate this timer since Poll() will now take up monitoring 
 		;whether the app subsequently gets turned off
 		SetTimer(ApplicationProcessCheck_Callback, 0) 
@@ -302,6 +303,9 @@ Poll()
 {
 	global bCancelPoll
 	global bActive := true
+
+	if (!bCancelPoll)
+		AppLog.LogLine("INFO: Polling started...`n" )
 
 	;Register plain old AHK hotkeys for keypress handling
 	for device, buttons in oActions
@@ -338,6 +342,8 @@ Poll()
 		;to wait for the application to be loaded.
 		if (bOnlyMonitorWhenApplicationLoaded && !ProcessExist(sApplicationName))
 		{
+			AppLog.LogLine("INFO: Application, `"" sApplicationName "`" not detected.`n" )
+
 			bCancelPoll := true
 
 			;Start a monitor to poll the application for its resumption
@@ -346,6 +352,8 @@ Poll()
 
 		if (bCancelPoll)
 		{
+			AppLog.LogLine("INFO: Polling disabled.`n" )
+
 			SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
 
 			;disable hotkeys too
@@ -408,6 +416,7 @@ PressedKey_Callback(HotkeyName)
  */
 GetAction(sDevice, sAction, mIndexer)
 {
+	seq := 1
 	annunc := ""
 	cl := ""
 	cl_2 := ""
@@ -428,6 +437,7 @@ GetAction(sDevice, sAction, mIndexer)
 								annunc := oActions[device][button][String(A_Index + 1)]["annunciation"]
 								cl := oActions[device][button][String(A_Index + 1)]["command_line"]
 								cl_2 := oActions[device][button][String(A_Index + 1)]["command_line_2"]
+								seq := sequences.Count
 								break 3
 							}
 							else
@@ -455,6 +465,7 @@ GetAction(sDevice, sAction, mIndexer)
 	oAction.Key := annunc cl cl_2
 	oAction.Device := sDevice
 	oAction.Action := sAction
+	oAction.Sequence := seq
 	oAction.Annunciation := annunc
 	oAction.CommandLine := cl
 	oAction.CommandLine_2 := cl_2
@@ -482,10 +493,10 @@ RunAction(oAction)
 			{
 				Sleep iCommandLineDelay
 				RunCommandLine(oAction.CommandLine_2)
-				AppLog.LogLine("INFO: Source: " oAction.Device ", Action: " oAction.Action ", CommandLine: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 "`n")
+				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 "`n")
 			}
 			else 
-				AppLog.LogLine("INFO: Source: " oAction.Device ", Action: " oAction.Action ", CommandLine: " oAction.CommandLine "`n")
+				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine "`n")
 		}
 
 		sLastActionKey := oAction.Key
@@ -498,10 +509,9 @@ RunAction(oAction)
  */
 RunCommandLine(cl)
 {
-	SplitPath cl, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
-			
-	OutDir := StrReplace(OutDir, '"')
-	OutFileName := StrReplace(SubStr(OutFileName, 1, InStr(OutFileName, ".exe") + 3), '"', "")
+	sExePath := SubStr(StrReplace(cl, '"'), 1, InStr(StrReplace(cl, '"'), ".exe") + 3)
+
+	SplitPath sExePath, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
 
 	;Check the tweaks.json file to see if this app needs to be restarted
 	sExeName := ""
@@ -603,7 +613,6 @@ CreateDirAndLog(d)
 
     return true
 }
-
 
 ;Log otherwise unhandled errors (spawed by OnError)
 LogError(e, mode)
