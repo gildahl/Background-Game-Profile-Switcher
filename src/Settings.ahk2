@@ -92,6 +92,7 @@ class Settings
 		gcAddTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth*3 - 30 - 4 " y" 166 " w" nButtonWidth, "Add")
 		gcAddTemplateButton.OnEvent("Click", (*) => Settings.AddTemplateButton_Click())
 		gcAddTemplateButton.TT := "Add this template definition to the list. It will also`nbe added to the Command Line 2 Template list."
+		gcAddTemplateButton.Enabled := false
 
 		gcRemoveTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth*2 - 30 - 2 " y" 166 " w" nButtonWidth, "Remove")
 		gcRemoveTemplateButton.OnEvent("Click", (*) => Settings.RemoveTemplateButton_Click())
@@ -131,11 +132,11 @@ class Settings
 		gcStatusLabel := guiSettings.AddText("Center " "x" 250 " y" 315 " w" 400 " h" 20)
 		gcStatusLabel.SetFont("cRed s10 w600")
 
-		gcAssignButton := guiSettings.AddButton("x" 30 " y" 330 " w" nButtonWidthWide, "Assign ROM")
+		gcAssignButton := guiSettings.AddButton("x" 30 " y" 318 " w" nButtonWidthWide " h" 35, "Assign ROM")
 		gcAssignButton.OnEvent("Click", (*) => Settings.AssignButton_Click())
 		gcAssignButton.TT := "Press to add the ROM Monitor action`n for the [Default] rom to the table."
 
-		gcCancelAssignButton := guiSettings.AddButton("x" 30 + nButtonWidthWide + 5 " y" 330 " w" nButtonWidthWide, "Cancel")
+		gcCancelAssignButton := guiSettings.AddButton("x" 30 + nButtonWidthWide + 5 " y" 318 " w" nButtonWidthWide " h" 35, "Cancel")
 		gcCancelAssignButton.OnEvent("Click", (*) => Settings.CancelAssignButton_Click())
 		gcCancelAssignButton.Enabled := false
 		gcCancelAssignButton.TT := "Cancel the current Assign operation."
@@ -171,7 +172,7 @@ class Settings
 		gcClearButton.Enabled := false
 		gcClearButton.TT := "Clear all actions from the table."
 
-		gcEditButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidthWide*3 - 30 - 5*2 " y" 565 " w" nButtonWidthWide, "Edit action")
+		gcEditButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidthWide*3 - 30 - 5*2 " y" 565 " w" nButtonWidthWide, "Copy action")
 		gcEditButton.OnEvent("Click", (*) => Settings.EditButton_Click())
 		gcEditButton.Enabled := false
 		gcEditButton.TT := "Copy columns from the selected`nrow back into their edit fields."
@@ -186,7 +187,7 @@ class Settings
 		gcSaveButton.Enabled := false
 		gcSaveButton.TT := "Save the Action List table."
 
-		gcUserPreferencesGroupBox := guiSettings.AddGroupBox("x" 30 " y" 610 " w" 275 " h" 95, "User Preferences")
+		gcUserPreferencesGroupBox := guiSettings.AddGroupBox("x" 30 " y" 610 " w" 420 " h" 95, "User Preferences")
 
 		gcApplication_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 633 " w" 250, "Operate only when this application is running.")
 		gcApplication_Checkbox.OnEvent("Click", (*) => Settings.Application_Checkbox_Click())
@@ -206,10 +207,30 @@ class Settings
 		gcApplicationBrowseButton.OnEvent("Click", (*) => Settings.ApplicationBrowseButton_Click())
 		gcApplicationBrowseButton.TT := "Browse for the executable representing the application you want to monitor."
 
-		gcToolTip_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 680, "Show Tooltips")
+		gcAlwaysAnnunciate_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 633 " Check3", "Always voice annunciate")
+		gcAlwaysAnnunciate_Checkbox.OnEvent("Click", (*) => Settings.AlwaysAnnunciate_Checkbox_Click())
+		try gcAlwaysAnnunciate_Checkbox.Value := IniRead(sIniFile, "General", "AlwaysAnnunciate", 1)	
+		gcAlwaysAnnunciate_Checkbox.TT := "Adjust when voice annunciation is used.`n`nChecked:      Always annunciate upon new game start.`nUnchecked:  Never annunciate (off).`nMinus:          Only annunciate on a profile change."
+
+		gcBeep_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 657, "Beep on profile change")
+		gcBeep_Checkbox.OnEvent("Click", (*) => Settings.Beep_Checkbox_Click())
+		try gcBeep_Checkbox.Value := IniRead(sIniFile, "General", "BeepOnProfileChange", 1)	
+		gcBeep_Checkbox.TT := "Checked:        Beep whenever a profile is changed.`nUnchecked:   Never beep (off)"
+
+		gcToolTip_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 680, "Show Tooltips")
 		gcToolTip_Checkbox.OnEvent("Click", (*) => Settings.ToolTip_Checkbox_Click())
 		try gcToolTip_Checkbox.Value := IniRead(sIniFile, "General", "ShowToolTips", 1)	
 		gcToolTip_Checkbox.TT := "Check or uncheck to show/hide tooltips on this screen."
+
+		gcRawAccel_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 680, "Run RawAccel when the application starts")
+		gcRawAccel_Checkbox.OnEvent("Click", (*) => Settings.RawAccel_Checkbox_Click())
+		try gcRawAccel_Checkbox.Value := IniRead(sIniFile, "General", "LoadRawAccel", 0)	
+		gcRawAccel_Checkbox.TT := "Run RawAccel when the application above starts`nand close it when the application terminates.`n`nRawAccel is expected to be in a subfolder called`n\RawAccel within the BGPS folder."
+
+		if (!FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") || gcApplicationEdit.Text == '' || gcApplication_Checkbox.Value == 0)
+			gcRawAccel_Checkbox.Enabled := false
+        
+		try global sRawAccelExe := IniRead(sIniFile, "General", "RawAccelExe", sRawAccelExe)
 		
 		gcCloseButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidthWide - 30 " y" 670 " w" nButtonWidthWide " h" 30, "Close")
 		gcCloseButton.OnEvent("Click", (*) => Settings.CloseButton_Click())
@@ -564,15 +585,34 @@ class Settings
 
 	static TemplateEdit_Change(*)
 	{
-		bControlVisible := true
-
 		gcTestTemplateButton.TT := "Run this command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit.Text, gcTemplateEdit.Text)
 
 		if (gcTemplateEdit.Text == "")
-			bControlVisible := false
+		{
+			gcAddTemplateButton.Enabled := false
+			gcRemoveTemplateButton.Enabled := false
+			gcTestTemplateButton.Enabled := false
+			return
+		}
 
-		gcAddTemplateButton.Enabled := bControlVisible
-		gcRemoveTemplateButton.Enabled := bControlVisible
+		gcTestTemplateButton.Enabled := true
+
+		;Disable Add button and enable remove button if template already exists
+		aTemplates := Array()
+		aTemplates := ControlGetItems(gcTemplateEdit)
+		for i, j in aTemplates
+		{
+			if (j == gcTemplateEdit.Text)
+			{
+				gcAddTemplateButton.Enabled := false
+				gcRemoveTemplateButton.Enabled := true
+			    return
+			}
+		}
+
+		;Template wasn't found
+		gcAddTemplateButton.Enabled := true
+		gcRemoveTemplateButton.Enabled := false
 	}
 
 	static TemplateEdit_2_Change(*)
@@ -644,6 +684,8 @@ class Settings
 
 		gcTestTemplateButton.TT := "Test the command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit.Text, gcTemplateEdit.Text)
 		gcTestTemplateButton_2.TT := "Test the command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit_2.Text, gcTemplateEdit_2.Text)
+
+		gcRemoveTemplateButton.Enabled := true
 	}
 
 	static RemoveTemplateButton_Click(*)
@@ -799,6 +841,16 @@ class Settings
 		ToolTip()
 	}
 
+	static AlwaysAnnunciate_Checkbox_Click(*)
+	{
+		IniWrite(gcAlwaysAnnunciate_Checkbox.Value, sIniFile, "General", "AlwaysAnnunciate")
+	}
+
+	static Beep_Checkbox_Click(*)
+	{
+		IniWrite(gcBeep_Checkbox.Value, sIniFile, "General", "BeepOnProfileChange")
+	}
+
 	static ProfileEdit_Change(*)
 	{
 		gcTestTemplateButton.TT := "Test the command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit.Text, gcTemplateEdit.Text)
@@ -866,6 +918,13 @@ class Settings
 	{
 		IniWrite(gcApplication_Checkbox.Value, sIniFile, "General", "MonitorApplication")
 		global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Enabled && gcApplication_Checkbox.Value == 1
+
+		gcRawAccel_Checkbox.Enabled := FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") && gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
+	}
+
+	static RawAccel_Checkbox_Click(*)
+	{
+		IniWrite(gcRawAccel_Checkbox.Value, sIniFile, "General", "LoadRawAccel")
 	}
 
 	static ApplicationEdit_Change(*)
@@ -873,6 +932,8 @@ class Settings
 		IniWrite(gcApplicationEdit.Text, sIniFile, "General", "Application")
 		gcApplication_Checkbox.Enabled := gcApplicationEdit.Text ? true : false	
 		global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Enabled && gcApplication_Checkbox.Value == 1
+
+		gcRawAccel_Checkbox.Enabled := FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") && gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
 	}
 
 	static ApplicationBrowseButton_Click(*)
@@ -883,6 +944,8 @@ class Settings
 		IniWrite(gcApplicationEdit.Text, sIniFile, "General", "Application")
 		gcApplication_Checkbox.Enabled := gcApplicationEdit.Text ? true : false
 		global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Enabled && gcApplication_Checkbox.Value == 1
+
+		gcRawAccel_Checkbox.Enabled := FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") && gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
 	}
 
 	static ActionListNameEdit_Change(*)

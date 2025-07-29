@@ -23,19 +23,9 @@ Log
 ===
 See the log.txt file in the \log subfolder if needed for troubleshooting. This log is overwritten at the start of every run. A beep will be sounded if an error is written to the file. When reporting any issues with BGPS, be sure to include the last log with your description of the problem. 
 
-User Preferences: Tooltips
-==========================
-In addition to this documentation file, the Settings screen implements tooltips on all controls to explain their operation. If you no longer need the tooltips, you can turn them off by unchecking the "Show Tooltips" checkbox.
-
-User Preferences: Operate only when this application is running
-===============================================================
-It is recommended to enter the name of the executable that you will be running BGPS in the field called, "Operate only when this application is running". For example, if you are using BGPS with Time Capsule Arcade, you would enter RetroVRArcade.exe in this field (only enter the executable name, not the path). This is to avoid possible side effects caused by BGPS trying to monitor for rom file access when the target application is not running.
-
 Configuration
 =============
-BGPS offers two different modes of operation. The first is a "ROM Monitor" mode that will execute user defined command line actions whenever rom files are loaded by MAME. Since this mode provides full automation, there's a good chance that "ROM Monitor" mode may be the only mode you need. 
-
-The second mode provides the option to trigger command line actions manually when a game controller button or keyboard key is pressed. Both "ROM Monitor" and keyboard/button mode can be active simultaneously.
+BGPS offers two different modes of operation. The first is a "ROM Monitor" mode that will execute user defined command line actions whenever rom files are loaded by MAME. Since this mode provides full automation, there's a good chance that "ROM Monitor" mode may be the only mode you need. The second mode provides the option to trigger command line actions manually when a game controller button or keyboard key is pressed. Both "ROM Monitor" and keyboard/button mode can be active simultaneously.
 
 ROM Monitor:
 ------------
@@ -101,17 +91,9 @@ Annunciation
 ------------
 This is the annunciation phrase you assigned to the action.
 
-Profile
--------
-This is the name of the profile you specified.
-
 Command Line
 ------------
 This is the command line template with field tags replaced (i.e. the actual command line that will be executed).
-
-Profile 2
----------
-This is the name of any second (optional) profile that you specified.
 
 Command Line 2
 --------------
@@ -130,9 +112,9 @@ Clear all
 ---------
 This clears the entire table.
 
-Edit action
+Copy action
 -----------
-Copies fields from the selected row back into the editor fields.
+Copies fields from the selected row back into the editor fields to ease the creation of similar entries.
 
 Delete action
 -------------
@@ -141,6 +123,31 @@ Removes the selected row from the table.
 Save actions
 ------------
 Save all actions in the table to the bgps.json file. This is the configuration file that will then be used in normal background operation mode once the Settings screen is closed. 
+
+User Preferences
+================
+
+Operate only when this application is running
+---------------------------------------------
+It is recommended to enter the name of the executable that you will be running BGPS in the field called, "Operate only when this application is running". For example, if you are using BGPS with Time Capsule Arcade, you would enter RetroVRArcade.exe in this field (only enter the executable name, not the path). This is to avoid possible side effects caused by BGPS trying to monitor for rom file access when the target application is not running.
+
+Run RawAccel when the application starts
+----------------------------------------
+RawAccel is a utility that can be found on GitHub at https://github.com/RawAccelOfficial/rawaccel. To integrate it with BGPS, simply install it to a subfolder of BGPS called ..\RawAccel. This software may be needed to tune some trackballs for additional sensitivity. This option is only available when the "Operate only when this application is running" setting is configured. When checked, BGPS will automatically load RawAccel when the application runs, and will close RawAccel when the application closes. It is up to the user to configure RawAccel properly for their trackball before use. 
+
+Always voice annunciate
+-----------------------
+If voice annunciations were configured in your action table, then this switch can control when these are heard. This checkbox has three states. When checked (the default), the voice will be heard every time a game in the action table is loaded (including default games). When unchecked, voice annunciation is effectively turned off. Finally, if the checkbox is configured with the minus sign (-), then voice annunciation will only occur if an actual profile switch is conducted (see the **Note** in the ROM Monitor section above).
+
+Beep on profile change
+----------------------
+This option will sound a beep whenever a profile switch happens.
+
+Show Tooltips
+-------------
+In addition to this documentation file, the Settings screen implements tooltips on all controls to explain their operation. If you no longer need the tooltips, you can turn them off by unchecking the "Show Tooltips" checkbox.
+
+
 
 
 

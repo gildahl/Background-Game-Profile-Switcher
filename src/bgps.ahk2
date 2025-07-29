@@ -52,6 +52,7 @@ global bCancelAssign := false
 global bCancelPoll := false
 global bActive := false
 global bOnlyMonitorWhenApplicationLoaded := false
+global iRawAccelPID := 0
 
 ;global inits
 global iRestartDelay := 0           ;Delay in between application close and restart (in ms)
@@ -76,6 +77,7 @@ global sApplicationName := "RetroVRArcade.exe"
 global sConfigFolder := A_ScriptDir "\config"
 global sUserFolder := A_ScriptDir "\user"
 global sLogFolder := A_ScriptDir "\log"
+global sRawAccelFolder := A_ScriptDir "\RawAccel"
 
 ;owned filename defaults
 global sUserFile := sUserFolder "\Arcade Controller.bgp"
@@ -83,6 +85,7 @@ global sTemplatesFile := sConfigFolder "\templates.json"
 global sTweaksFile := sConfigFolder "\tweaks.json"
 global sIniFile := sConfigFolder "\bgps.ini"
 global sGamesXMLFile := A_ScriptDir "\games.xml"
+global sRawAccelExe := sRawAccelFolder "\rawaccel.exe"
 
 AppLog.Init(sLogFolder "\log.txt", "BGPS") ;initialize the application log
 OnError LogError ;deal with unhandled exceptions
@@ -147,6 +150,21 @@ LoadInit()
 	}
 	catch {
 		IniWrite(iCommandLineDelay, sIniFile, "General", "CommandLineDelay")
+	}
+
+	;Init RawAccel path
+	try {
+		sRA := IniRead(sIniFile, "General", "RawAccelExe")
+
+		;in case the folder was moved
+		if (!FileExist(sRA))
+			if (FileExist(sRawAccelExe))
+				IniWrite(sRawAccelExe, sIniFile, "General", "RawAccelExe")
+		    else
+				global sRawAccelExe := sRA
+	}
+	catch {
+		IniWrite(sRawAccelExe, sIniFile, "General", "RawAccelExe")
 	}
 }
 
@@ -272,6 +290,7 @@ RomAccess_Event(Folder, Changes)
 ApplicationProcessCheck_Callback()
 {
 	global bCancelPoll
+	global iRawAccelPID
 
 	;Terminate this timer if bCancelPoll gets set
 	if (bCancelPoll)
@@ -285,6 +304,14 @@ ApplicationProcessCheck_Callback()
 	if (bOnlyMonitorWhenApplicationLoaded && ProcessExist(sApplicationName))
 	{
 		AppLog.LogLine("INFO: Application, `"" sApplicationName "`"was detected.`n" )
+
+		;Run RawAccel if the option is checked and it's available
+		if (gcRawAccel_Checkbox.Value)
+			if (FileExist(sRawAccelExe))
+			{
+				Run sRawAccelExe,,"Min", &iRawAccelPID
+				AppLog.LogLine("INFO: RawAccel started.`n" )
+			}
 
 		;terminate this timer since Poll() will now take up monitoring 
 		;whether the app subsequently gets turned off
@@ -303,6 +330,7 @@ Poll()
 {
 	global bCancelPoll
 	global bActive := true
+	global iRawAccelPID
 
 	if (!bCancelPoll)
 		AppLog.LogLine("INFO: Polling started...`n" )
@@ -343,6 +371,15 @@ Poll()
 		if (bOnlyMonitorWhenApplicationLoaded && !ProcessExist(sApplicationName))
 		{
 			AppLog.LogLine("INFO: Application, `"" sApplicationName "`" not detected.`n" )
+
+			;shutdown RawAccel if it is running
+			if (gcRawAccel_Checkbox.Value)
+				if (iRawAccelPID)
+				{
+					ProcessClose(iRawAccelPID)
+					iRawAccelPID := 0
+					AppLog.LogLine("INFO: RawAccel Closed.`n" )
+				}
 
 			bCancelPoll := true
 
@@ -462,7 +499,7 @@ GetAction(sDevice, sAction, mIndexer)
 			}
 
 	oAction := Map()
-	oAction.Key := annunc cl cl_2
+	oAction.Key := cl cl_2
 	oAction.Device := sDevice
 	oAction.Action := sAction
 	oAction.Sequence := seq
@@ -482,11 +519,20 @@ RunAction(oAction)
 {
 	static sLastActionKey := ""
 
+	if (gcAlwaysAnnunciate_Checkbox.Value == 1)
+		oVoice.Speak(oAction.Annunciation)
+
+
 	if (oAction.Key != sLastActionKey) ;don't run the same action twice in a row
 	{
 		if (oAction.CommandLine)
 		{
-			oVoice.Speak(oAction.Annunciation)			
+			if (gcAlwaysAnnunciate_Checkbox.Value == -1)
+				oVoice.Speak(oAction.Annunciation)
+			
+			if (gcBeep_Checkbox.Value == 1)
+				SoundBeep
+			
 			RunCommandLine(oAction.CommandLine)
 
 			if (oAction.CommandLine_2)
@@ -537,7 +583,7 @@ RunCommandLine(cl)
 	
 	Sleep iRestartDelay
 
-	try Run cl, OutDir
+	try Run cl, OutDir, "Min"
 }
 
 /**
