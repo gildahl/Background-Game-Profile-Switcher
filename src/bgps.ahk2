@@ -309,8 +309,9 @@ ApplicationProcessCheck_Callback()
 		if (gcRawAccel_Checkbox.Value)
 			if (FileExist(sRawAccelExe))
 			{
-				Run sRawAccelExe,,"Min", &iRawAccelPID
-				AppLog.LogLine("INFO: RawAccel started.`n" )
+				SplitPath(sRawAccelExe,,&OutDir)
+				Run sRawAccelExe, OutDir, "Min", &iRawAccelPID
+				AppLog.LogLine("INFO: RawAccel started from: " sRawAccelExe ".`n" )
 			}
 
 		;terminate this timer since Poll() will now take up monitoring 
