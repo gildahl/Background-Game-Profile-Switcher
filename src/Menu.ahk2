@@ -77,12 +77,12 @@ class TrayMenu
 
 		mAbout := Map()
 		mAbout.Width := 250
-		mAbout.Height := 100
+		mAbout.Height := 120
 		mAbout.X := Round((A_ScreenWidth / 2) - (mAbout.Width / 2))
 		mAbout.Y := Round((A_ScreenHeight / 2) - (mAbout.Height / 2))
 
 		guiAbout := Gui("-MaximizeBox -MinimizeBox", sAboutTitle) 
-		guiAbout.Add("Text",, "Background Game Profile Switcher (BGPS).`n`n© 2025 David G. Dahlstrom")
+		guiAbout.Add("Text",, "Background Game Profile Switcher (BGPS).`nVersion 1.0.0.0`n`n© 2025 David G. Dahlstrom")
 		gcAboutExitButton := guiAbout.AddButton("Default W" 50, "OK")
 		gcAboutExitButton.OnEvent("Click", About_Close)
 
