@@ -24,7 +24,7 @@ When you run the executable (BGPS.exe), you will see a joystick icon in the Wind
 
 Log
 ===
-See the log.txt file in the \log subfolder if needed for troubleshooting. This log is overwritten at the start of every run. A beep will be sounded if an error is written to the file. When reporting any issues with BGPS, be sure to include the last log with your description of the problem. 
+See the log.txt file in the \log subfolder if needed for troubleshooting. This log is overwritten at the start of every run. Two beeps will be sounded if an error is written to the file. When reporting any issues with BGPS, be sure to include the last log with your description of the problem. 
 
 Configuration
 =============
