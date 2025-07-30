@@ -3,15 +3,16 @@ By David Dahlstrom
 
 Summary
 =======
-BGPS provides the ability to run game controller configuration software automatically in the background based on what game is being played by a MAME emulator, or manually by pressing buttons on a keyboard or game controller. The primary use case for this utility is to better facilitate on-the-fly game profile switching or virtual game controller creation when playing emulated MAME games in a VR arcade environment that does not offer the "run before" or "run after" capabilities of conventional front ends where this sort of thing is usually handled. 
+BGPS provides the ability to run game controller configuration software automatically in the background based on what game is being played in emulation, or manually by pressing buttons on a keyboard or game controller. The primary use case for this utility is to facilitate on-the-fly game profile switching when playing emulated MAME games in a VR arcade environment that does not offer the "run before" or "run after" capabilities of conventional front ends where this sort of thing is usually handled. 
 
 Tested Software
 ===============
-BGPS has been tested successfully with the following software:
+BGPS supports and has been tested successfully with the following software:
 
 * Arcade Time Capsule (fantastic MAME-based VR arcade and main tested target client of BGPS)
 * Virtual Controller  (software to create virtual XInput controllers)
 * Ultimarc UltraMap   (software to modify behavior of Ultimarc's UltraStik 360 joysticks)
+* RawAccel            (software to adjust the sensitivity of mouse/trackball controllers)
 
 Command line templates for Virtual Controller and UltraMap are provided as default selections. You may, of course, modify these or add new ones for other software to suit your needs. 
 
@@ -27,7 +28,7 @@ See the log.txt file in the \log subfolder if needed for troubleshooting. This l
 
 Configuration
 =============
-BGPS offers two different modes of operation. The first is a "ROM Monitor" mode that will execute actions whenever rom specified files are accessed. Since this mode provides full automation for game environments like ATC, there's a good chance that "ROM Monitor" mode may be the only mode you need. 
+BGPS offers two different modes of operation. The first is a "ROM Monitor" mode that will execute actions whenever specified rom files are accessed. Since this mode provides full automation for game environments like ATC, there's a good chance that "ROM Monitor" mode may be the only mode you need. 
 
 The second mode provides the option to trigger command line actions manually when a game controller button or keyboard key is pressed. Both "ROM Monitor" and keyboard/button actions can be added to the action list in any combination.
 
