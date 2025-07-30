@@ -76,7 +76,10 @@ class AppLog
             FileAppend "[" . elapsedTime . "] " . logString, this._sLogFileName
 
         if (InStr(logString, "ERROR:"))
-            SoundBeep()
+        {
+            SoundBeep 300
+            SoundBeep 300
+        }
 
         return
     }
