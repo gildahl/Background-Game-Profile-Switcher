@@ -2,8 +2,8 @@
  * @description Class to read truncated MAME ListXML file, Games.xml
  * @file ReadListXML.ahk2
  * @author David G. Dahlstrom
- * @date 2025/07/13
- * @version 0.1.0.0
+ * @date 2025/07/30
+ * @version 1.0.0.0
  ***********************************************************************/
 
 /***********************************************************************

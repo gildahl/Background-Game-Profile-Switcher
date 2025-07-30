@@ -2,8 +2,8 @@
  * @description Background Game Profile Switcher (BGPS)
  * @file bgps.ahk2
  * @author © 2025 David G. Dahlstrom
- * @date 2025/07/13
- * @version 0.1.0.0
+ * @date 2025/07/30
+ * @version 1.0.0.0
   ****************************************************************************/
 
 /******************************************************************************
@@ -17,7 +17,7 @@
 /***********************************************************************
 * Compiler directives
 ************************************************************************/
-global CodeVersion := "0.1.0.0"
+global CodeVersion := "1.0.0.0"
 ;@Ahk2Exe-Let version = %A_PriorLine~U)^(.+"){1}(.+)".*$~$2%
 ;@Ahk2Exe-SetCopyright © 2025 David G. Dahlstrom
 ;@Ahk2Exe-SetProductName Background Game Profile Switcher (BGPS)
