@@ -12,7 +12,7 @@ BGPS supports and has been tested successfully with the following software:
 * Arcade Time Capsule (fantastic MAME-based VR arcade and main tested target client of BGPS)
 * Virtual Controller  (software to create virtual XInput controllers)
 * Ultimarc UltraMap   (software to modify behavior of Ultimarc's UltraStik 360 joysticks)
-* RawAccel            (software to adjust the sensitivity of mouse/trackball controllers)
+* RawAccel            (software to adjust sensitivity of mouse/trackball controllers)
 
 Command line templates for Virtual Controller and UltraMap are provided as default selections. You may, of course, modify these or add new ones for other software to suit your needs. 
 
