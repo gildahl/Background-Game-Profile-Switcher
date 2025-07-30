@@ -22,7 +22,7 @@ global CodeVersion := "1.0.0.0"
 ;@Ahk2Exe-SetCopyright © 2025 David G. Dahlstrom
 ;@Ahk2Exe-SetProductName Background Game Profile Switcher (BGPS)
 ;@Ahk2Exe-SetDescription Background Game Profile Switcher (BGPS)
-;@Ahk2Exe-SetProductVersion %U_version% beta
+;@Ahk2Exe-SetProductVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;***********************************************************************
 
