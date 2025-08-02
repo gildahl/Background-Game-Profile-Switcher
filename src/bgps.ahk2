@@ -2,8 +2,8 @@
  * @description Background Game Profile Switcher (BGPS)
  * @file bgps.ahk2
  * @author © 2025 David G. Dahlstrom
- * @date 2025/07/30
- * @version 1.0.0.0
+ * @date 2025/08/01
+ * @version 1.0.1.0
   ****************************************************************************/
 
 /******************************************************************************
@@ -17,7 +17,7 @@
 /***********************************************************************
 * Compiler directives
 ************************************************************************/
-global CodeVersion := "1.0.0.0"
+global CodeVersion := "1.0.1.0"
 ;@Ahk2Exe-Let version = %A_PriorLine~U)^(.+"){1}(.+)".*$~$2%
 ;@Ahk2Exe-SetCopyright © 2025 David G. Dahlstrom
 ;@Ahk2Exe-SetProductName Background Game Profile Switcher (BGPS)
@@ -53,6 +53,7 @@ global bCancelPoll := false
 global bActive := false
 global bOnlyMonitorWhenApplicationLoaded := false
 global iRawAccelPID := 0
+global sLastActionKey := ""
 
 ;global inits
 global iRestartDelay := 0           ;Delay in between application close and restart (in ms)
@@ -158,10 +159,12 @@ LoadInit()
 
 		;in case the folder was moved
 		if (!FileExist(sRA))
+		{
 			if (FileExist(sRawAccelExe))
 				IniWrite(sRawAccelExe, sIniFile, "General", "RawAccelExe")
 		    else
 				global sRawAccelExe := sRA
+		}
 	}
 	catch {
 		IniWrite(sRawAccelExe, sIniFile, "General", "RawAccelExe")
@@ -213,6 +216,8 @@ StartRomWatcher()
 	
 	if (attrib)
 	{
+		AppLog.LogLine("INFO: ROM Folder set to: `"" gcROMMonitorFolderEdit.Text ".`n")
+
 		;Ensure all rom files have a last-accessed date/time of a week ago.  This is to address
 		;a Windows deficiency in which the last-access date/time of files is not updated if the file
 		;was previously accessed within the last hour or so (or sometimes since the last boot), so
@@ -227,7 +232,7 @@ StartRomWatcher()
 	else
 	{
 		if (gcROMMonitorFolderEdit.Text == "")
-			AppLog.LogLine("INFO: ROM Folder: `"" gcROMMonitorFolderEdit.Text "`" is not configured.`n")
+			AppLog.LogLine("INFO: ROM Folder is not configured.`n")
 		else
 			AppLog.LogLine("INFO: ROM Folder: `"" gcROMMonitorFolderEdit.Text "`" is invalid.`n")
 	}
@@ -271,6 +276,8 @@ RomAccess_Event(Folder, Changes)
 	if (!bActive)
 		return
 
+	AppLog.LogLine("INFO: ROM file: `"" sROMFile "`" was accessed.`n")
+
 	mIndexer := Map()
 	SplitPath(sROMFile,,,, &OutNameNoExt) ;the list doesn't have the .zip extension so strip it off.
 	oAction := GetAction("ROM Monitor", OutNameNoExt, mIndexer)
@@ -306,13 +313,12 @@ ApplicationProcessCheck_Callback()
 		AppLog.LogLine("INFO: Application, `"" sApplicationName "`"was detected.`n" )
 
 		;Run RawAccel if the option is checked and it's available
-		if (gcRawAccel_Checkbox.Value)
-			if (FileExist(sRawAccelExe))
-			{
-				SplitPath(sRawAccelExe,,&OutDir)
-				Run sRawAccelExe, OutDir, "Min", &iRawAccelPID
-				AppLog.LogLine("INFO: RawAccel started from: " sRawAccelExe ".`n" )
-			}
+		if (gcRawAccel_Checkbox.Value && FileExist(sRawAccelExe))
+		{
+			SplitPath(sRawAccelExe,,&OutDir)
+			Run sRawAccelExe, OutDir, "Min", &iRawAccelPID
+			AppLog.LogLine("INFO: RawAccel started from: " sRawAccelExe ".`n" )
+		}
 
 		;terminate this timer since Poll() will now take up monitoring 
 		;whether the app subsequently gets turned off
@@ -351,7 +357,7 @@ Poll()
 	; https://www.autohotkey.com/boards/viewtopic.php?t=115995
 	; https://wiki.libsdl.org/SDL2/APIByCategory
 
-	;AHK doesn't support union, need Buffer to receive SDL_Event
+	;Create buffer to receive SDL_Event
     evtBuffer := Buffer(56,0)
 
 	;purge the buffer
@@ -374,15 +380,18 @@ Poll()
 			AppLog.LogLine("INFO: Application, `"" sApplicationName "`" not detected.`n" )
 
 			;shutdown RawAccel if it is running
-			if (gcRawAccel_Checkbox.Value)
-				if (iRawAccelPID)
-				{
-					ProcessClose(iRawAccelPID)
-					iRawAccelPID := 0
-					AppLog.LogLine("INFO: RawAccel Closed.`n" )
-				}
+			if (gcRawAccel_Checkbox.Value && iRawAccelPID)
+			{
+				ProcessClose(iRawAccelPID)
+				iRawAccelPID := 0
+				AppLog.LogLine("INFO: RawAccel Closed.`n" )
+			}
 
 			bCancelPoll := true
+
+			;reset sLastActionKey in case any config changes are made 
+			;externally while the application is closed.
+			global sLastActionKey := ""
 
 			;Start a monitor to poll the application for its resumption
 			SetTimer(ApplicationProcessCheck_Callback)
@@ -422,7 +431,9 @@ Poll()
 				;Get the next logical action from the action list based on the button press, then run it
 				oAction := GetAction(aDevices[mDeviceIndex[evt.jbutton.which]], evt.jbutton.button, mIndexer)
 				SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)				
-				RunAction(oAction)				
+				
+				if (oAction.Key) ;Don't run null actions
+					RunAction(oAction)				
 			}
 		}
 		SDL2.SDL_Delay(1)
@@ -518,7 +529,7 @@ GetAction(sDevice, sAction, mIndexer)
  */
 RunAction(oAction)
 {
-	static sLastActionKey := ""
+	global sLastActionKey
 
 	if (gcAlwaysAnnunciate_Checkbox.Value == 1)
 		oVoice.Speak(oAction.Annunciation)

@@ -3,7 +3,13 @@ By David Dahlstrom
 
 Summary
 =======
-BGPS provides the ability to run game controller configuration software automatically in the background based on what game is being played in emulation, or manually by pressing buttons on a keyboard or game controller. The primary use case for this utility is to facilitate on-the-fly game profile switching when playing emulated MAME games in a VR arcade environment that does not offer the "run before" or "run after" capabilities of conventional front ends where this sort of thing is usually handled. 
+BGPS provides the ability to run game controller configuration software automatically in the background based on what game is being played in emulation, or manually by pressing buttons on a keyboard or game controller. The primary use case for this utility is to facilitate on-the-fly game profile switching when playing emulated MAME games in a VR arcade environment that does not offer the "run before" or "run after" capabilities of conventional front ends where this sort of thing is usually handled.
+
+Resources
+=========
+GitHub:  https://github.com/gildahl/Background-Game-Profile-Switcher
+Discord: https://discord.gg/yQ7THG6d2u
+Guide:   https://docs.google.com/document/d/1_UpA_Fa-1jQdQMLDDSFTut15gjGnhjljFkd_raw9Ox4/edit?tab=t.0
 
 Tested Software
 ===============
@@ -44,7 +50,11 @@ To setup a manual action that will run upon a particular button or key press, Ch
 
 Voice Annunciation
 ==================
-If you would like BGPS to verbally annunciate an action when it is executed, you may add a phrase to the optional "Voice annunciation phrase" field. You can test the phrase to see what it will sound like by pressing the "Voice Test" button.
+If you would like BGPS to verbally annunciate an action when it is executed, you may add a phrase to the optional "Voice annunciation phrase" field. You can test the phrase to see what it will sound like by pressing the "Voice Test" button. These phrases can provide reminders about how a game is configured. For example:
+
+* "Use left joystick"
+* "Use right 4 way joystick"
+* "Use trackball with buttons on left"
 
 How to configure Profiles and Command Line Templates
 ====================================================

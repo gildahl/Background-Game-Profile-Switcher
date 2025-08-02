@@ -77,8 +77,8 @@ class AppLog
 
         if (InStr(logString, "ERROR:"))
         {
-            SoundBeep 300
-            SoundBeep 300
+            SoundBeep 1500
+            SoundBeep 1500
         }
 
         return

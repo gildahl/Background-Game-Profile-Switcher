@@ -1,0 +1,6 @@
+v1.0.1.0
+* Only display column 2 if needed.
+* Reset profile load suppression on application exit.
+* Block running of null button actions causing side effects.
+* Increase frequency of error double-beep (was hard to hear).
+* Error message enhancements.

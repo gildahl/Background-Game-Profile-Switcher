@@ -22,6 +22,7 @@ class Settings
 	static sActionListName := "Arcade Controller"
 	static sROMFolderOGText := ""
 	static mMetrics := Map()
+	static iCommandLinesUsed := 1
 
 	static BuildScreen()
 	{
@@ -376,6 +377,8 @@ class Settings
 	{
 		gcListView.Delete()
 		gcClearButton.Enabled := false
+
+		Settings.ResizeColumns()
 	}
 
 	/**
@@ -778,6 +781,8 @@ class Settings
 		}
 		else
 			gcClearButton.Enabled := false
+
+		Settings.ResizeColumns()
 	}
 
 	static EditButton_Click(*)
@@ -1058,6 +1063,8 @@ class Settings
 			cl_2 := Settings.GetFormattedCommandLine(gcProfileEdit_2.Text, gcTemplateEdit_2.Text)
 			pe_2 := gcProfileEdit_2.Text
 			te_2 := gcTemplateEdit_2.Text
+
+			Settings.iCommandLinesUsed := Settings.iCommandLinesUsed < 2 ? 2 : Settings.iCommandLinesUsed 
 		}
 
 		;if the device/action is a duplicate
@@ -1334,16 +1341,32 @@ class Settings
 	 */
 	static ResizeColumns()
 	{
-		gcListView.ModifyCol(1,"AutoHdr")
-		gcListView.ModifyCol(2,"AutoHdr")
-		gcListView.ModifyCol(3,"AutoHdr")
-		gcListView.ModifyCol(4,"AutoHdr")
-		gcListView.ModifyCol(5,0)
-		gcListView.ModifyCol(6,"AutoHdr")
-		gcListView.ModifyCol(7,0)
-		gcListView.ModifyCol(8,"AutoHdr")
-		gcListView.ModifyCol(9, 0)
-		gcListView.ModifyCol(10, 0)
+		Loop gcListView.GetCount()
+		{
+			test := gcListView.GetText(A_Index, 8)
+			if (gcListView.GetText(A_Index, 8))
+			{
+				Settings.iCommandLinesUsed := Settings.iCommandLinesUsed < 2 ? 2 : Settings.iCommandLinesUsed
+				Settings.iCommandLinesUsed := Settings.iCommandLinesUsed < 3 ? 3 : Settings.iCommandLinesUsed
+				break
+			}
+
+			Settings.iCommandLinesUsed := 1
+		}
+
+		gcListView.ModifyCol(1,"AutoHdr")  ;device
+		gcListView.ModifyCol(2,"AutoHdr")  ;action
+		gcListView.ModifyCol(3,"AutoHdr")  ;sequence
+		gcListView.ModifyCol(4,"AutoHdr")  ;voice annunciation
+		gcListView.ModifyCol(5,0)          ;profile 1 (hidden)
+		gcListView.ModifyCol(6,"AutoHdr")  ;command line 1
+		gcListView.ModifyCol(7,0)          ;profile 2 (hidden)
+		if (Settings.iCommandLinesUsed > 1)
+			gcListView.ModifyCol(8,"AutoHdr")  ;command line 2 (hidden unless used)
+		else
+			gcListView.ModifyCol(8,0)
+		gcListView.ModifyCol(9, 0)         ;template 1 (hidden)
+		gcListView.ModifyCol(10, 0)        ;template 2 (hidden)
 
 		gcListView.Redraw()
 	}
