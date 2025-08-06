@@ -30,6 +30,7 @@ class Settings
 
 		local nButtonWidth := 70
 		local nButtonWidthWide := 90
+		local nIconButtonWidth := 40
 
 		sSettingsTitle := "Background Game Profile Switcher (BGPS) - Settings"
 
@@ -48,25 +49,45 @@ class Settings
 		gcDevices.TT := "Select the device or method that will trigger the action."
 		
 		gcROMMonitorFolderLabel := guiSettings.AddText("x" 370 " y" 10 " w" 350, "ROM folder to monitor")
-		gcROMMonitorFolderEdit := guiSettings.AddEdit("x" 370 " y" 25 " w" 427 " +BackgroundWhite",)
+		gcROMMonitorFolderEdit := guiSettings.AddEdit("x" 370 " y" 25 " w" 457 " +BackgroundWhite",)
 		gcROMMonitorFolderEdit.OnEvent("Change", (*) => Settings.ROMMonitorFolderEdit_Change())
 		gcROMMonitorFolderEdit.TT := "Enter the full path to the folder containing your MAME roms.`nThe files in this folder must have an extension of *.zip"
+
+        gcButtonOptionsGroupBox := guiSettings.AddGroupBox("x" 380 " y" 10 " w" 360 " h" 83, "Button Operation Options")
+
+		gcCommandLine_Radio := guiSettings.AddRadio("Checked " "x" 400 " y" 35, "Use Command Lines")
+		gcCommandLine_Radio.OnEvent("Click", (*) => Settings.CommandLine_Radio_Click())
+		gcCommandLine_Radio.TT := "Check this to creat a command line button action."
+
+		gcSendKey_Radio := guiSettings.AddRadio("vButtonOptionsGroup " "x" 400 " y" 60, "Send Keypress")
+		gcSendKey_Radio.OnEvent("Click", (*) => Settings.SendKey_Radio_Click())
+		gcSendKey_Radio.TT := "Check this to create a keypress action."
+
+		gcSendKey_ComboBox := guiSettings.AddComboBox("x" 500 " y" 57 " w" 100 " +BackgroundWhite",)
+		gcSendKey_ComboBox.OnEvent("Change", (*) => Settings.SendKey_ComboBox_Change())
+
+		gcSendKey_ComboBox.Add(Settings.FillKeysArray())
+
+		gcButtonOptionsGroupBox.Visible := gcSendKey_Radio.Visible := gcCommandLine_Radio.Visible := gcSendKey_ComboBox.Visible := false
 
 		try gcROMMonitorFolderEdit.Text := IniRead(sIniFile, "General", "ROMFolder")
 		Settings.sROMFolderOGText := gcROMMonitorFolderEdit.Text
 
-		gcROMMonitorFolderBrowseButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth - 30 " y" 24 " w" nButtonWidth, "Browse...")
+		gcROMMonitorFolderBrowseButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth - 30 " y" 24 " w" nIconButtonWidth)
 		gcROMMonitorFolderBrowseButton.OnEvent("Click", (*) => Settings.ROMMonitorFolderBrowseButton_Click())
 		gcROMMonitorFolderBrowseButton.TT := "Browse for a folder containing your MAME roms.`nThese must have an extension of *.zip"
+		GuiButtonIcon(gcROMMonitorFolderBrowseButton, 'imageres.dll', 206, 's16')
 
 		gcAnnunciationLabel := guiSettings.AddText("x" 30 " y" 55 " w" 250, "Voice annunciation phrase (optional)")
-		gcAnnunciationEdit := guiSettings.AddEdit("x" 30 " y" 70 " w" 250 " +BackgroundWhite",)
+		gcAnnunciationEdit := guiSettings.AddEdit("x" 30 " y" 70 " w" 277 " +BackgroundWhite",)
 		gcAnnunciationEdit.OnEvent("Change", (*) => Settings.AnnunciationEdit_Change())
 		gcAnnunciationEdit.TT := "Word or phrase that will be`nspoken upon execution of the action."
 
-		gcAnnunciationTestButton := guiSettings.AddButton("x" 283 " y" 69 " w" nButtonWidth, "Voice Test")
+		gcAnnunciationTestButton := guiSettings.AddButton("x" 310 " y" 69 " w" nIconButtonWidth)
 		gcAnnunciationTestButton.OnEvent("Click", (*) => Settings.AnnunciationTestButton_Click())
 		gcAnnunciationTestButton.Enabled := false
+		gcAnnunciationTestButton.TT := "Test the voice phrase."
+		GuiButtonIcon(gcAnnunciationTestButton, 'icons.dll', 20, 's16') ;megaphone icon
 
 		gcROMDropDownLabel := guiSettings.AddText("x" 370 " y" 55 " w" 300, "Choose ROM")
 		gcROMDropDown := guiSettings.AddDropDownList("x" 370 " y" 70 " w" 500 " +BackgroundWhite",)
@@ -76,59 +97,61 @@ class Settings
 		gcROMDropDownGameRom := guiSettings.AddText("x" 373 " y" 90 " w" 150, "")
 		gcROMDropDownGameInfo := guiSettings.AddText("x" 370 " y" 92 " w" 480 " 0x2", "")
 
-		gcProfileLabel := guiSettings.AddText("x" 60 " y" 110 " w" 300, "Profile name")
-		gcProfileEdit := guiSettings.AddEdit("x" 60 " y" 125 " w" 592 " +BackgroundWhite",)
+		gcProfileLabel := guiSettings.AddText("x" 80 " y" 113 " w" 80, "Profile name")
+		gcProfileEdit := guiSettings.AddEdit("x" 150 " y" 110 " w" 592 " +BackgroundWhite",)
 		gcProfileEdit.OnEvent("Change", (*) => Settings.ProfileEdit_Change())
 		gcProfileEdit.TT := "Enter a profile name to insert into the [profile_name] or`n[profile_full_name] field tag(s) of the Command Line Template."
 		
-		gcProfileBrowseButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth*3 - 30 - 4 " y" 125 " w" nButtonWidth, "Browse...")
+		gcProfileBrowseButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 109 " w" nIconButtonWidth)
 		gcProfileBrowseButton.OnEvent("Click", (*) => Settings.ProfileBrowseButton_Click())
 		gcProfileBrowseButton.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of the Command Line Template."
+		GuiButtonIcon(gcProfileBrowseButton, 'imageres.dll', 206, 's16')
 
-		gcTemplateLabel := guiSettings.AddText("x" 60 " y" 152 " w" 600, "Command Line Template")
-		gcTemplateEdit := guiSettings.AddComboBox("x" 60 " y" 167 " w" 592 " +BackgroundWhite",)
+		gcTemplateLabel := guiSettings.AddText("x" 60 " y" 136 " w" 80 " 0x2", "Command Line`nTemplate")
+		gcTemplateEdit := guiSettings.AddComboBox("x" 150 " y" 140 " w" 592 " +BackgroundWhite",)
 		gcTemplateEdit.OnEvent("Change", (*) => Settings.TemplateEdit_Change())
 		gcTemplateEdit.TT := "A template for the command line which will execute for this action. This template`nmay include field tags such as [profile_name] and [profile_full_name] which will be`nreplaced by the contents of the Profile name field.`n`n[profile_name]`          will be replaced by the profile name`n[profile_full_name]   will be replaced by the profile's full path and filename."
 
-		gcAddTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth*3 - 30 - 4 " y" 166 " w" nButtonWidth, "Add")
+		gcAddTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 139 " w" nIconButtonWidth)
 		gcAddTemplateButton.OnEvent("Click", (*) => Settings.AddTemplateButton_Click())
 		gcAddTemplateButton.TT := "Add this template definition to the list. It will also`nbe added to the Command Line 2 Template list."
 		gcAddTemplateButton.Enabled := false
+		GuiButtonIcon(gcAddTemplateButton, 'icons.dll', 127, 's16') ;add (+) icon
 
-		gcRemoveTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth*2 - 30 - 2 " y" 166 " w" nButtonWidth, "Remove")
+		gcRemoveTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*2 - 30 - 2 " y" 139 " w" nIconButtonWidth)
 		gcRemoveTemplateButton.OnEvent("Click", (*) => Settings.RemoveTemplateButton_Click())
 		gcRemoveTemplateButton.TT := "Delete this template definition from the list. It will also`nbe deleted from the Command Line 2 Template list."
+		GuiButtonIcon(gcRemoveTemplateButton, 'icons.dll', 130, 's16') ;remove (-) icon
 
-		gcTestTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth - 30 " y" 166 " w" nButtonWidth, "Test")
+		gcTestTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth - 30 " y" 139 " w" nIconButtonWidth)
 		gcTestTemplateButton.OnEvent("Click", (*) => Settings.TestTemplateButton_Click())
+		GuiButtonIcon(gcTestTemplateButton, 'icons.dll', 32, 's16') ;gear icon
 
-		gcProfile_2_Checkbox := guiSettings.AddCheckbox("x" 30 " y" 211)
+		gcProfile_2_Checkbox := guiSettings.AddCheckbox("x" 30 " y" 183)
 		gcProfile_2_Checkbox.OnEvent("Click", (*) => Settings.Profile_2_Checkbox_Click())
 		gcProfile_2_Checkbox.TT := "Check this to enable configuration of`na second command for the action."
 
-		gcProfileLabel_2 := guiSettings.AddText("x" 60 " y" 210 " w" 300, "Profile name 2")
-		gcProfileEdit_2 := guiSettings.AddEdit("x" 60 " y" 225 " w" 592 " +BackgroundWhite",)
+		gcProfileLabel_2 := guiSettings.AddText("x" 73 " y" 183 " w" 80, "Profile name 2")
+		gcProfileEdit_2 := guiSettings.AddEdit("x" 150 " y" 180 " w" 592 " +BackgroundWhite",)
 		gcProfileEdit_2.OnEvent("Change", (*) => Settings.ProfileEdit_2_Change())
 		gcProfileEdit_2.TT := "Enter a profile name to insert into the [profile_name] or `n[profile_full_name] field tag(s) of the Command Line 2 Template."
 
-		gcProfileBrowseButton_2 := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth*3 - 30 - 4 " y" 225 " w" nButtonWidth, "Browse...")
+		gcProfileBrowseButton_2 := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 179 " w" nIconButtonWidth)
 		gcProfileBrowseButton_2.OnEvent("Click", (*) => Settings.ProfileBrowseButton_2_Click())
 		gcProfileBrowseButton_2.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of`nthe Command Line 2 Template."
+		GuiButtonIcon(gcProfileBrowseButton_2, 'imageres.dll', 206, 's16')
 
-		gcTemplateLabel_2 := guiSettings.AddText("x" 60 " y" 252 " w" 600, "Command Line Template 2")
-		gcTemplateEdit_2 := guiSettings.AddComboBox("x" 60 " y" 267 " w" 592 " +BackgroundWhite",)
+		gcTemplateLabel_2 := guiSettings.AddText("x" 60 " y" 206 " w" 80 " 0x2", "Command Line`nTemplate 2")
+		gcTemplateEdit_2 := guiSettings.AddComboBox("x" 150 " y" 210 " w" 592 " +BackgroundWhite",)
 		gcTemplateEdit_2.OnEvent("Change", (*) => Settings.TemplateEdit_2_Change())
 		gcTemplateEdit_2.TT := "A template for a second command line that will execute one second after the first. This`ntemplate may include field tags such as [profile_name] and [profile_full_name] which`nwill be replaced by the contents of the Profile name 2 field.`n`n[profile_name]`          will be replaced by profile 2's name`n[profile_full_name]   will be replaced by profile 2's full path and filename."
 
-		gcTestTemplateButton_2 := guiSettings.AddButton("x" Settings.mMetrics.Width - nButtonWidth*3 - 30 - 4 " y" 266 " w" nButtonWidth, "Test")
+		gcTestTemplateButton_2 := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 209 " w" nIconButtonWidth)
 		gcTestTemplateButton_2.OnEvent("Click", (*) => Settings.TestTemplateButton_2_Click())
 		gcTestTemplateButton_2.Enabled := false
+		GuiButtonIcon(gcTestTemplateButton_2, 'icons.dll', 32, 's16') ;gear icon
 
-		gcProfileLabel_2.Enabled := false
-		gcProfileEdit_2.Enabled := false
-		gcProfileBrowseButton_2.Enabled := false
-		gcTemplateLabel_2.Enabled := false
-		gcTemplateEdit_2.Enabled := false
+		gcProfileLabel_2.Enabled := gcProfileEdit_2.Enabled := gcProfileBrowseButton_2.Enabled := gcTemplateLabel_2.Enabled := gcTemplateEdit_2.Enabled := false
 
 		gcStatusLabel := guiSettings.AddText("Center " "x" 250 " y" 315 " w" 400 " h" 20)
 		gcStatusLabel.SetFont("cRed s10 w600")
@@ -153,7 +176,7 @@ class Settings
 		global sUserFile := sUserFolder "\" gcActionListNameEdit.Text ".bgp"
 		TrayMenu.SetMenuName("New", Settings.sActionListName)  
 
-		gcListView := guiSettings.AddListView("-Multi" " r" 10 " x" 30 " y" 360 " w" Settings.mMetrics.Width - 30*2 " Grid", ["Device", "Action", "Sequence", "Annunciation", "", "Command Line", "", "Command Line 2","",""])
+		gcListView := guiSettings.AddListView("-Multi" " r" 10 " x" 30 " y" 360 " w" Settings.mMetrics.Width - 30*2 " Grid", ["Device", "Action", "Sequence", "Annunciation", "", "Command", "", "Command 2","",""])
 		fListView_ItemSelect := Settings.ListView_ItemSelect.Bind()
 		gcListView.OnEvent("ItemSelect", fListView_ItemSelect)
 		Settings.ResizeColumns()
@@ -333,11 +356,11 @@ class Settings
 
 		gcTemplateEdit.Add(oTemplates)
 		try gcTemplateEdit.Choose(1)
-		gcTestTemplateButton.TT := "Run this command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit.Text, gcTemplateEdit.Text)
+		gcTestTemplateButton.TT := "Test this command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit.Text, gcTemplateEdit.Text)
 
 		gcTemplateEdit_2.Add(oTemplates)
 		try gcTemplateEdit_2.Choose(1)
-		gcTestTemplateButton_2.TT := "Run this command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit_2.Text, gcTemplateEdit_2.Text)
+		gcTestTemplateButton_2.TT := "Test this command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit_2.Text, gcTemplateEdit_2.Text)
 	}
 
 	/**
@@ -554,7 +577,8 @@ class Settings
 
 	static Devices_Change(*)
 	{
-		bControlVisible := true
+		bROMControlVisible := true
+		bGameControlVisible := false
 
 		if (gcDevices.Text == "ROM Monitor")
 		{
@@ -568,22 +592,35 @@ class Settings
 				gcAssignButton.Text := "Assign Key"
 				gcAssignButton.TT := "Press to assign a key or key combination,`nadd the action to the table."
 			}
-			else
+			else ;must be a game controller
 			{
 				gcAssignButton.Text := "Assign Button"
 				gcAssignButton.TT := "Press to assign button from the " gcDevices.Text " device,`nnand add the action to the table."
+				bGameControlVisible := true
+
+				if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
+					gcAssignButton.Enabled := false
+				else 
+					gcAssignButton.Enabled := true
 			}
 
-			bControlVisible := false
+			bROMControlVisible := false
 		}
 
-		gcROMMonitorFolderBrowseButton.Visible := bControlVisible
-		gcROMMonitorFolderEdit.Visible := bControlVisible
-		gcROMMonitorFolderLabel.Visible := bControlVisible
-		gcROMDropDownLabel.Visible := bControlVisible
-		gcROMDropDown.Visible := bControlVisible
-		gcROMDropDownGameInfo.Visible := bControlVisible
-		gcROMDropDownGameRom.Visible := bControlVisible
+		;Set visibilty of controls only used in ROM Monitor Mode
+		gcROMMonitorFolderBrowseButton.Visible := bROMControlVisible
+		gcROMMonitorFolderEdit.Visible := bROMControlVisible
+		gcROMMonitorFolderLabel.Visible := bROMControlVisible
+		gcROMDropDownLabel.Visible := bROMControlVisible
+		gcROMDropDown.Visible := bROMControlVisible
+		gcROMDropDownGameInfo.Visible := bROMControlVisible
+		gcROMDropDownGameRom.Visible := bROMControlVisible
+
+		;Set visibility of controls only used in Game Controller mode
+		gcButtonOptionsGroupBox.Visible := bGameControlVisible
+		gcSendKey_Radio.Visible := bGameControlVisible
+		gcCommandLine_Radio.Visible := bGameControlVisible
+		gcSendKey_ComboBox.Visible := bGameControlVisible
 	}
 
 	static TemplateEdit_Change(*)
@@ -817,6 +854,20 @@ class Settings
 
 		gcAnnunciationEdit.Text := gcListView.GetText(iRow, 4)
 		gcProfileEdit.Text := gcListView.GetText(iRow, 5)
+
+		;handle case where action is a Send Key action
+		if (gcListView.GetText(iRow, 1) != "ROM Monitor" && gcListView.GetText(iRow, 1) != "Keyboard" && InStr(gcListView.GetText(iRow, 6), "Send Key:"))
+		{   
+			iStartPos := InStr(gcListView.GetText(iRow, 6), "{") + 1 
+			iEndPos := InStr(gcListView.GetText(iRow, 6), "}")
+			iLength := iEndPos - iStartPos
+
+			gcSendKey_ComboBox.Text := SubStr(gcListView.GetText(iRow, 6), iStartPos, iLength)
+			gcSendKey_Radio.Value := 1
+		}
+		else
+			gcCommandLine_Radio.Value := 1
+		
 		gcTemplateEdit.Text := gcListView.GetText(iRow, 9) ;this is a hidden column containing the pre-filled-in template
 		gcTestTemplateButton.TT := "Test the command line:`n" Settings.GetFormattedCommandLine(gcProfileEdit.Text, gcTemplateEdit.Text)
 
@@ -886,6 +937,30 @@ class Settings
 	static ROMDropDown_Change(*)
 	{
 		Settings.SetRomInfo()
+	}
+
+	static SendKey_Radio_Click(*)
+	{
+		if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
+			gcAssignButton.Enabled := false
+		else 
+			gcAssignButton.Enabled := true
+	}
+
+	static CommandLine_Radio_Click(*)
+	{
+		if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
+			gcAssignButton.Enabled := false
+		else 
+			gcAssignButton.Enabled := true
+	}
+
+	static SendKey_ComboBox_Change(*)
+	{
+		if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
+			gcAssignButton.Enabled := false
+		else 
+			gcAssignButton.Enabled := true
 	}
 
 	static ProfileBrowseButton_Click(*)
@@ -1012,7 +1087,7 @@ class Settings
 		SDL2.SDL_PumpEvents()
 		SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
 
-		;Handle the SDL_Event
+		;Handle button presses via SDL_Event
 		loop
 		{
 			PollEvent := SDL2.SDL_PollEvent(evtBuffer)
@@ -1055,15 +1130,24 @@ class Settings
 	{
 		cl := Settings.GetFormattedCommandLine(gcProfileEdit.Text, gcTemplateEdit.Text)
 		cl_2 := ""
+		pe := gcProfileEdit.Text
 		pe_2 := ""
+		te := gcTemplateEdit.Text
 		te_2 := ""
 
-		if (gcProfile_2_Checkbox.Value)
+		if (gcSendKey_Radio.Value)
+		{
+			cl := "Send Key: {" gcSendKey_ComboBox.Text "}"
+			pe := ""
+			te := ""
+		}
+		else if (gcProfile_2_Checkbox.Value)
 		{
 			cl_2 := Settings.GetFormattedCommandLine(gcProfileEdit_2.Text, gcTemplateEdit_2.Text)
 			pe_2 := gcProfileEdit_2.Text
 			te_2 := gcTemplateEdit_2.Text
 
+			;Determines whether to show the second Command column
 			Settings.iCommandLinesUsed := Settings.iCommandLinesUsed < 2 ? 2 : Settings.iCommandLinesUsed 
 		}
 
@@ -1084,7 +1168,7 @@ class Settings
 		;if the device is the one selected and is not a duplicate
 		if (sDevice == gcDevices.Text && !Settings.ItemInList(sDevice, sAction, cl, cl_2))
 		{
-			iRow := gcListView.Insert(1000,, sDevice, sAction, , gcAnnunciationEdit.Text, gcProfileEdit.Text, cl, pe_2, cl_2, gcTemplateEdit.Text, te_2)
+			iRow := gcListView.Insert(1000,, sDevice, sAction, , gcAnnunciationEdit.Text, pe, cl, pe_2, cl_2, te, te_2)
 			
 			Settings.ResizeColumns()
 			gcSaveButton.Enabled := true
@@ -1369,5 +1453,93 @@ class Settings
 		gcListView.ModifyCol(10, 0)        ;template 2 (hidden)
 
 		gcListView.Redraw()
+	}
+
+	static FillKeysArray()
+	{
+		aKeys := Array()
+			Loop 94 ;33-126
+				aKeys.Push(Chr(A_Index + 32))
+
+		aKeys.Push("F1")
+		aKeys.Push("F2")
+		aKeys.Push("F3")
+		aKeys.Push("F4")
+		aKeys.Push("F5")
+		aKeys.Push("F6")
+		aKeys.Push("F7")
+		aKeys.Push("F8")
+		aKeys.Push("F9")
+		aKeys.Push("F10")
+		aKeys.Push("F11")
+		aKeys.Push("F12")
+
+		aKeys.Push("Enter")
+		aKeys.Push("Escape")
+		aKeys.Push("Space")
+		aKeys.Push("Tab")
+		aKeys.Push("Backspace")
+		aKeys.Push("Delete")
+		aKeys.Push("Insert")
+		aKeys.Push("Up")
+		aKeys.Push("Down")
+        aKeys.Push("Left")
+		aKeys.Push("Right")
+		aKeys.Push("Home")
+		aKeys.Push("End")
+		aKeys.Push("PgUp")
+		aKeys.Push("PgDn")
+
+		aKeys.Push("Alt")
+		aKeys.Push("LAlt")
+		aKeys.Push("RAlt")
+		aKeys.Push("Shift")
+		aKeys.Push("LShift")
+		aKeys.Push("RShift")
+		aKeys.Push("LWin")
+		aKeys.Push("RWin")
+		
+		aKeys.Push("Sleep")
+		
+		aKeys.Push("Numpad0")
+	    aKeys.Push("Numpad1")
+		aKeys.Push("Numpad2")
+		aKeys.Push("Numpad3")
+	    aKeys.Push("Numpad4")
+		aKeys.Push("Numpad5")
+		aKeys.Push("Numpad6")
+	    aKeys.Push("Numpad7")
+		aKeys.Push("Numpad8")
+		aKeys.Push("Numpad9")
+	    aKeys.Push("NumpadDot")
+		aKeys.Push("NumpadEnter")
+		aKeys.Push("NumpadMult")
+		aKeys.Push("NumpadDiv")
+		aKeys.Push("NumpadAdd")
+		aKeys.Push("NumpadSub")
+		aKeys.Push("NumpadDel")
+	    aKeys.Push("NumpadIns")
+		aKeys.Push("NumpadClear")
+		aKeys.Push("NumpadUp")
+	    aKeys.Push("NumpadDown")
+		aKeys.Push("NumpadLeft")
+		aKeys.Push("NumpadRight")
+	    aKeys.Push("NumpadHome")
+		aKeys.Push("NumpadEnd")
+		aKeys.Push("NumpadPgUp")
+	    aKeys.Push("NumpadPgDn")
+
+		aKeys.Push("Volume_Mute")
+		aKeys.Push("Volume_Down")
+		aKeys.Push("Volume_Up")
+		aKeys.Push("Media_Next")
+		aKeys.Push("Media_Prev")		
+		aKeys.Push("Media_Stop")
+		aKeys.Push("Media_Play_Pause")
+		aKeys.Push("PrintScreen")
+		aKeys.Push("CtrlBreak")
+		aKeys.Push("Pause")
+
+		return aKeys
 	}
 }

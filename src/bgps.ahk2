@@ -38,6 +38,7 @@ global CodeVersion := "1.0.1.0"
 #include ReadListXML.ahk2
 #include Log.ahk2
 #include Tooltips.ahk2
+#include GuiButtonIcon.ahk2
 
 TraySetIcon "joystick.ico"
 
@@ -534,8 +535,24 @@ RunAction(oAction)
 	if (gcAlwaysAnnunciate_Checkbox.Value == 1)
 		oVoice.Speak(oAction.Annunciation)
 
+	;if a keypress action, send the key
+	if (InStr(oAction.CommandLine, "Send Key:"))
+	{
+		iStartPos := InStr(oAction.CommandLine, "{")
+		iEndPos := InStr(oAction.CommandLine, "}")
+		iLength := iEndPos - iStartPos
 
-	if (oAction.Key != sLastActionKey) ;don't run the same action twice in a row
+		;separate down/up actions needed for MAME
+		sKey := SubStr(oAction.CommandLine, iStartPos, iLength)
+		Send sKey " down}"
+		Sleep 30
+		Send sKey " up}"
+
+		return
+	}
+
+	;if a command line action, don't run the same action twice in a row
+	if (oAction.Key != sLastActionKey) 
 	{
 		if (oAction.CommandLine)
 		{

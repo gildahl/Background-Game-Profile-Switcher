@@ -24,7 +24,7 @@ Command line templates for Virtual Controller and UltraMap are provided as defau
 
 Installation
 ============
-To install BGPS, extract the distribution zip file to a folder on your Windows computer that has read/write access. The folder can be called whatever you want. 
+To install BGPS, extract the distribution zip file to a folder on your Windows computer that has read/write access. The folder can be called whatever you want. After installation, you should right-click on each *.dll and *.exe file, choose Properties, and then check the "Unblock" checkbox at the bottom and click apply.
 
 When you run the executable (BGPS.exe), you will see a joystick icon in the Windows tray indicating normal background mode is active. Right clicking on this icon will show a menu of options. When running for the first time you will want to choose the "Settings..." option to configure the application.
 
@@ -110,12 +110,12 @@ Annunciation
 ------------
 This is the annunciation phrase you assigned to the action.
 
-Command Line
-------------
+Command
+-------
 This is the command line template with field tags replaced (i.e. the actual command line that will be executed).
 
-Command Line 2
---------------
+Command 2
+---------
 This is the second command line template with field tags replaced (i.e. the actual command line that will be executed).
 
 
