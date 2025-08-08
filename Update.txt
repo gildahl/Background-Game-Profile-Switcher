@@ -1,6 +1,9 @@
 v1.0.1.0
-* Only display column 2 if needed.
+* Added a third command line config option.
+* Added support for keypresses to be mapped to game controller buttons
+* Only display column in the action list 2 and 3 if needed.
 * Reset profile load suppression on application exit.
-* Block running of null button actions causing side effects.
-* Increase frequency of error double-beep (was hard to hear).
+* Block running of null button actions which caused side effects.
+* Raise frequency of error double-beep (was hard to hear).
+* Beep on profile change off by default.
 * Error message enhancements.
