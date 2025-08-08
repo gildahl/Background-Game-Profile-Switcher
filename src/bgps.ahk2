@@ -39,6 +39,7 @@ global CodeVersion := "1.0.1.0"
 #include Log.ahk2
 #include Tooltips.ahk2
 #include GuiButtonIcon.ahk2
+#include MAMEData.ahk2
 
 TraySetIcon "joystick.ico"
 
@@ -58,7 +59,7 @@ global sLastActionKey := ""
 
 ;global inits
 global iRestartDelay := 0           ;Delay in between application close and restart (in ms)
-global iCommandLineDelay := 1000    ;Delay in between two consecutive command line calls (in ms)
+global iCommandLineDelay := 500     ;Delay in between two consecutive command line calls (in ms)
 
 global oTemplates                   ;Object used by the JSON parser to hold the Template list
 global oTweaks                      ;Object used by the JSON parser to hold the Tweaks list
@@ -74,7 +75,7 @@ aDefaultTemplates.Push('"C:\Program Files\Virtual Controller\VirtualController.e
 aDefaultTemplates.Push('"C:\Program Files (x86)\Ultramap\Ultramap.exe" [profile_full_name]')
 
 global sApplicationName := "RetroVRArcade.exe"
-
+ 
 ;folder defaults
 global sConfigFolder := A_ScriptDir "\config"
 global sUserFolder := A_ScriptDir "\user"
@@ -278,9 +279,9 @@ RomAccess_Event(Folder, Changes)
 		return
 
 	AppLog.LogLine("INFO: ROM file: `"" sROMFile "`" was accessed.`n")
+	SplitPath(sROMFile,,,,&OutNameNoExt) ;don't need the .zip extension, so strip it off.
 
 	mIndexer := Map()
-	SplitPath(sROMFile,,,, &OutNameNoExt) ;the list doesn't have the .zip extension so strip it off.
 	oAction := GetAction("ROM Monitor", OutNameNoExt, mIndexer)
 
 	;if the action is not defined, then get the Default action (if one exists)
@@ -470,6 +471,7 @@ GetAction(sDevice, sAction, mIndexer)
 	annunc := ""
 	cl := ""
 	cl_2 := ""
+	cl_3 := ""
 
 	for device, buttons in oActions
 		for button, sequences in buttons
@@ -487,6 +489,7 @@ GetAction(sDevice, sAction, mIndexer)
 								annunc := oActions[device][button][String(A_Index + 1)]["annunciation"]
 								cl := oActions[device][button][String(A_Index + 1)]["command_line"]
 								cl_2 := oActions[device][button][String(A_Index + 1)]["command_line_2"]
+								cl_3 := oActions[device][button][String(A_Index + 1)]["command_line_3"]
 								seq := sequences.Count
 								break 3
 							}
@@ -496,6 +499,7 @@ GetAction(sDevice, sAction, mIndexer)
 								annunc := oActions[device][button]["1"]["annunciation"]
 								cl := oActions[device][button]["1"]["command_line"]
 								cl_2 := oActions[device][button]["1"]["command_line_2"]
+								cl_3 := oActions[device][button]["1"]["command_line_3"]
 								break 3
 							}
 						}
@@ -506,19 +510,21 @@ GetAction(sDevice, sAction, mIndexer)
 						annunc := info["annunciation"]
 						cl := info["command_line"]
 						cl_2 := info["command_line_2"]
+						cl_3 := info["command_line_3"]
 						break 3
 					}
 				}
 			}
 
 	oAction := Map()
-	oAction.Key := cl cl_2
+	oAction.Key := cl cl_2 cl_3
 	oAction.Device := sDevice
 	oAction.Action := sAction
 	oAction.Sequence := seq
 	oAction.Annunciation := annunc
 	oAction.CommandLine := cl
 	oAction.CommandLine_2 := cl_2
+	oAction.CommandLine_3 := cl_3
 	
 	return oAction
 }
@@ -568,11 +574,21 @@ RunAction(oAction)
 			{
 				Sleep iCommandLineDelay
 				RunCommandLine(oAction.CommandLine_2)
-				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 "`n")
 			}
-			else 
+
+			if (oAction.CommandLine_3)
+			{
+				Sleep iCommandLineDelay
+				RunCommandLine(oAction.CommandLine_3)
+			}
+
+			 if (oAction.CommandLine_3)
+				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 ", Command Line 3: " oAction.CommandLine_3 "`n")
+			 else if (oAction.CommandLine_2)
+				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 "`n")
+			 else 
 				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine "`n")
-		}
+			}
 
 		sLastActionKey := oAction.Key
 	}

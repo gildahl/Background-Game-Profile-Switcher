@@ -61,8 +61,10 @@ class TrayMenu
 		gcAnnunciationEdit.Text := ""
 		gcProfileEdit.Text := ""
 		gcProfileEdit_2.Text := ""
+		gcProfileEdit_3.Text := ""
 		gcProfile_2_Checkbox := 0
-		Settings.ToggleCheckedState(0)
+		gcProfile_3_Checkbox := 0
+		Settings.ToggleCheckedState(2, false)
 
 		AppLog.LogLine("INFO: Showing Settings dialog.`n")
 		guiSettings.Show("X" Settings.mMetrics.X " Y" Settings.mMetrics.Y " W" Settings.mMetrics.Width " H" Settings.mMetrics.Height)
