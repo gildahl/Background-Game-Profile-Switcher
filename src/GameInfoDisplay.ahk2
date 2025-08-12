@@ -1,0 +1,720 @@
+/******************************************************************************
+ * @description Game information display
+ * @file GameInfoDisplay.ahk2
+ * @author © 2025 David G. Dahlstrom
+ ******************************************************************************/
+
+/******************************************************************************
+* LICENSE
+* The code in this file is distributed freely on GitHub for hobbyist 
+* users, and may be used and modified freely for personal, non-commercial 
+* use. It may not be sold or distributed with any other product or software 
+* without permission.
+*******************************************************************************/
+
+#Requires AutoHotkey v2.0
+
+SetAssetFullPath(assetType, romName, assetFolder, systemAsset)
+{
+    return true
+}
+
+;This class supports the display of images and information on pause.
+class GameInfoDisplay
+{
+	__New()
+	{
+		this._currentPage := 1
+		this._totalPages := 0
+		this._pages := Map()
+		this._hideNavTriangles := false
+		this._stopFlash := false
+		this._active := false
+
+		this.CreateNavTriangles()
+	}
+
+	CreateGameInfoScreen()
+	{
+		;global gGui
+		global guiGameInfo
+
+		guiGameInfo := Gui(, "eipGui - guiGameInfo")
+		guiGameInfo.Opt("-Caption")
+		guiGameInfo.BackColor := "Black" 
+
+		;this.CreateNavTriangles()
+
+		;Create Overlay (used by oFadeAlphaOverlay to dim the screen)
+		;This is basically a pictureless picture control    
+		;gGui.guiGameInfo_Overlay := guiGameInfo.AddPicture("BackgroundTrans x0 y0 h" . nScreenHeight . " w" . nScreenWidth . " vAlphaOverlay")
+		;gGui.guiGameInfo_Overlay.Visible := false  ;this breaks fading of pause screen when select screen is invoked.
+	}
+
+	ShowGameInfoScreen()
+	{
+		guiGameInfo.Opt("-AlwaysOnTop")
+		guiGameInfo.Show("W" nScreenWidth " H" nScreenHeight " X0 Y0")
+
+		this._active := true
+	}
+
+	/**
+	 * Add a game info page. The "info" type is two-column text data; the "native" type is a
+	 * transparent screen that lets one see through to the native emulator in its paused state.
+	 * All other types are images (such as "highscore" screens, control panel "controls", etc.).
+	 * Additional image types of any kind can be added by adding new types to the [AssetPaths]
+	 * section of arcadeEIP.ini (for example, adding a new key called titles_folder= would 
+	 * add a new "titles" image type.)
+	 * 
+	 * @param pageType - "info", "native" or an image type ("controls", "highscore", etc.)
+	 * @param bVisible - whether this page is currently displayable
+	 * @param control1 - image and "native" types require one control
+	 * @param {string} control2 - "info" requires a second control since it has two columns
+	 */
+	AddPage(pageType, bVisible, control1, control2:="")
+	{
+		pages := this._pages
+
+		this._totalPages++
+
+		if (pageType != "info") ;adds an image type page (like a control panel map)
+		{
+			page := Map()
+			page["type"] := pageType
+			page["visible"] := bVisible
+			page["control1"] := control1 ;the image control
+
+			idx := this._totalPages
+			pages[idx] := page
+		}
+		else if (pageType == "info") ;adds a page of mame.xml/mameinfo.dat text
+		{
+			page := Map()
+			page["type"] := "info"
+			page["visible"] := bVisible
+			page["control1"] := control1 ;the left column edit control
+			page["control2"] := control2 ;the right column edit control
+
+			idx := this._totalPages
+			pages[idx] := page
+		}		
+
+		this._pages := pages
+	}
+
+	/**
+	 * Gets the logical start page by skipping over any invisible
+	 * pages until a visible one is found.
+	 * 
+	 * @returns {number} 
+	 */
+	GetPageStart()
+    {
+		pageStart := this._currentPage := 1
+
+		if (this._pages[pageStart]["visible"] == false)
+			pageStart := this.GetPageNext()
+
+		return pageStart
+	}
+
+	;Get the next logical page number
+	GetPageNext()
+	{
+		loop
+		{
+			pageNext := ++this._currentPage
+
+			if (pageNext > this._totalPages)
+			{
+				pageNext := 1
+				this._currentPage := 1
+			}
+
+			;skip any pages that are not presently visible
+			if (this._pages[pageNext]["visible"] == true || A_Index > this._totalPages)
+				break
+		}
+
+		return pageNext
+	}
+
+	;Get the previous logical page number
+	GetPagePrevious()
+	{
+		loop
+		{
+			pagePrev := --this._currentPage
+			if (pagePrev < 1)
+			{
+				pagePrev := this._totalPages
+				this._currentPage := pagePrev
+			}
+
+			;skip any pages that are not presently visible
+			if (this._pages[pagePrev]["visible"] == true || A_Index > this._totalPages)
+				break
+		}
+
+		return pagePrev
+	}
+
+	/**
+	 * Page Navigation
+	 * 
+	 * "start" - Go to page 1 (for the first time - skips hide operation);
+	 * "r"     - go one page to the right;
+	 * "l"     - go one page to the left;
+	 * "hide"  - hide the currently displayed page
+	 * 
+	 * @param directive - "start", "r", "l", or "hide"
+	 * @returns {void} 
+	 */
+	GoPage(directive)
+	{
+		if (!this._active)
+			return
+
+		pages := this._pages ;the page collection
+
+		;don't need to flip pages if there is 0 or 1 page in the collection
+		if ((directive == "r" || directive == "l") && pages.Count <= 1)
+			return
+
+		;Hide the current page
+		if (directive != "start") ;page is already blank for "start" so skip
+		{
+			this._stopFlash := true ;stop flashing nav triangle 
+			thisPage := this._currentPage			
+			pageType := pages[thisPage]["type"]
+
+			if (pageType != "info") ;if image type
+			{
+				guiGameInfo.BackColor := "Black"
+			
+				try	(gGui.%pages[thisPage]["control1"]%).Visible := false
+			}
+			else if (pageType == "info")
+			{
+				guiGameInfo.BackColor := color_edit_bg
+				
+				(gGui.%pages[thisPage]["control1"]%).Visible := true
+				(gGui.%pages[thisPage]["control2"]%).Visible := true	
+			}
+		}
+
+		Switch directive 
+		{
+			case "hide":
+				;make sure Alpha is returned to black so select screen fades correctly
+				guiGameInfo.BackColor := "Black" 
+				try (gGui.%pages[thisPage]["control1"]%).Visible := false
+				try (gGui.%pages[thisPage]["control2"]%).Visible := false
+				return
+			case "start":
+				newPage := this.GetPageStart()
+			case "r":
+				try (gGui.%pages[thisPage]["control1"]%).Visible := false
+				try (gGui.%pages[thisPage]["control2"]%).Visible := false
+				newPage := this.GetPageNext()
+			case "l":
+				try (gGui.%pages[thisPage]["control1"]%).Visible := false
+				try (gGui.%pages[thisPage]["control2"]%).Visible := false
+				newPage := this.GetPagePrevious()
+		}
+	 
+		pageType := pages[newPage]["type"]
+
+		;Show the new page
+		if (pageType != "info") ;if an image type
+		{
+			guiGameInfo.BackColor := "Black" ;0x1F1F1F			
+			(gGui.%pages[newPage]["control1"]%).Visible := true
+		}
+		else if (pageType == "info")
+		{
+			guiGameInfo.BackColor := color_edit_bg
+			
+			(gGui.%pages[newPage]["control1"]%).Visible := true			
+			(gGui.%pages[newPage]["control2"]%).Visible := true
+		}
+
+		this._currentPage := newPage
+	}
+
+	;Call this between each game
+	Clear()
+	{
+		this._currentPage := 1
+		this._totalPages := 0
+		this._pages := Map()
+
+		try guiGameInfo.Destroy()
+
+		this._active := false
+	}
+
+	
+	/**
+	 * ;Creates the actual image and info pages for each asset type
+	 * @param assetType - either "info" or a folder name that is a subfolder of .\assets
+	 * @param romName - the rom name without an extension
+	 * @param {String} sType - file extension of image file (only for images)
+	 */
+	CreateGameInfoPage(assetType, romName, sType:="")
+	{
+		global oMameData
+
+		info_text := ""
+		bPageVisible := true
+
+		if (assetType == "info")
+		{
+			;*********************************
+			; Info display
+			;*********************************
+
+			edit_margin := 45 ;this is 5 greater than the width of the navigation triangles
+			edit_width := nScreenWidth // 2 - edit_margin
+			edit_height := nScreenHeight			
+
+			;These two "test" controls are used to discover the height of a single row in the edit control
+			;-E0x200 hides the border (corresponds to WS_EX_CLIENTEDGE)
+			;-Hdr removes column header
+			guiGameInfo.SetFont("s16", "Tahoma")
+			gGui.guiGameInfo_PauseTest1 := guiGameInfo.AddEdit("x0 y0 -VScroll -HScroll -E0x200 vPauseTest1 R1")
+			Tst1 := gGui.guiGameInfo_PauseTest1.Hwnd
+
+			;GuiControlGet, sz1, Pos, PauseTest1
+			gGui.guiGameInfo_PauseTest1.GetPos(&sz1X, &sz1Y, &sz1sW, &sz1H)
+			gGui.guiGameInfo_PauseTest2 := guiGameInfo.AddEdit("x0 y0 -VScroll -HScroll -E0x200 vPauseTest2 R2")
+			Tst2 := gGui.guiGameInfo_PauseTest2.Hwnd
+
+			gGui.guiGameInfo_PauseTest2.GetPos(&sz2X, &sz2Y, &sz2sW, &sz2H)
+			ht := sz2H - sz1H
+
+			;I don't think ahk has a way of destroying these controls, so let's just hide them
+			gGui.guiGameInfo_PauseTest1.Visible := false
+			gGui.guiGameInfo_PauseTest2.Visible := false
+
+			screen_lines := nScreenHeight // ht ;number of lines available on the screen
+
+			;get the history for the current game
+			if (!IsObject(oMameData))
+				oMameData := MAMEData(mameinfo_file, mamehistory_file)
+
+			mame_history_text := oMameData.GetHistory(romName)
+			mame_info_text := oMameData.GetInfo(romName)
+
+			info_text := mame_history_text . mame_info_text
+
+			ChangeEncoding(&info_text, "CP0", "UTF-8")
+
+			;Replace "En Dash" characters with "Hyphen-Minus" to avoid display issues.
+			info_text := StrReplace(info_text, "–", "-")
+
+			;Replace linefeeds with carriage return/linefeed
+			info_text := StrReplace(info_text, "`n", "`r`n")
+
+			if (info_text)
+			{  
+				ClipSaved := ClipboardAll() ; Save the entire clipboard to a variable.		
+				if (!ClipWait(5)) {
+					Log.LogLine("WARNING: Could not save clipboard in CreateGameInfoPage().`n")
+				}
+
+				;Add the first control
+				gGui.guiGameInfo_PauseInfo1 := guiGameInfo.AddEdit("x" edit_margin " y0 h" . edit_height . " w" . edit_width . " c0xCCCCCC Background0x1F1F1F -VScroll -HScroll -E0x200 vPauseInfo1")
+				hwndInfo1 := gGui.guiGameInfo_PauseInfo1.Hwnd
+				
+				gGui.guiGameInfo_PauseInfo1.Visible := false
+
+				;These pages are just strings that will be double-deref'ed when called. 
+				this.AddPage("info", true, "guiGameInfo_PauseInfo1", "guiGameInfo_PauseInfo2")
+
+				;add history to first edit control. The number of lines can't be determined until
+				;after this text is added due to word wrapping.
+				gGui.guiGameInfo_PauseInfo1.Text := info_text
+
+				;Each loop populates a single edit control; every two edit controls form a page.
+				;(basically, each edit control is one column of a two column text display)
+				Loop
+				{
+					;As long as an edit control's text exceeds the on-screen capacity, copy
+					;the overflow from that "src" control to the next "dest" control.
+					srcIdx := A_Index
+					destIdx := A_Index + 1
+
+					;This is an odd/even check
+					;if odd, margin is 0; if even, margin is at the middle (edit_width)
+					x_pos := ((A_Index & 1) != 0) ? edit_width + edit_margin : edit_margin
+
+					;Add page to oPauseControl manager every time we create a new odd (left) edit control
+					if (x_pos == edit_margin)
+						this.AddPage("info", true, "guiGameInfo_PauseInfo" . destIdx, "guiGameInfo_PauseInfo" . destIdx+1)
+
+					;Create new dest control to accept the overflow
+					gGui.guiGameInfo_PauseInfo%destIdx% := guiGameInfo.AddEdit("x" . x_pos . " y0 h" . edit_height . " w" edit_width . " c0xCCCCCC Background0x1F1F1F -VScroll -HScroll -E0x200 vPauseInfo%" . destIdx . "%")
+					gGui.hwndInfo%destIdx% := gGui.guiGameInfo_PauseInfo%destIdx%.Hwnd
+					gGui.guiGameInfo_PauseInfo%destIdx%.Visible := false
+
+					;SendMessage commands need the hwnd
+					try {
+						hwndSrc := gGui.guiGameInfo_PauseInfo%srcIdx%.Hwnd
+					}
+					catch {
+						hwndSrc := ""
+					}
+
+					try {
+						hwndDest := gGui.guiGameInfo_PauseInfo%destIdx%.Hwnd
+					}
+					catch {
+						hwndDest := ""
+					}
+					
+					;Get the full line count from the src control. Select all text that overflows the 
+					;screen and cut/paste it into the new dest edit control.
+					ErrorLevel := 0
+					try {
+						ErrorLevel := SendMessage(0xBA,0,0,,"ahk_id " . hwndSrc) ;EM_GETLINECOUNT
+					}
+					catch {
+						Log.LogLine("WARNING: SendMessage EM_GETLINECOUNT failed in CreateGameInfoPage().`n")
+					}
+					total_lines := ErrorLevel  ;This is the total line count (including the overflow)
+
+					delta := total_lines - screen_lines ;this is the number of lines of overflow
+	
+					;Cut/Paste the overflow text from src to dest edit control
+					if (delta > 0)
+					{
+						ErrorLevel := SendMessage(0xBB, screen_lines-1, 0,,"ahk_id " . hwndSrc)  ; EM_LINEINDEX
+						if (ErrorLevel == "FAIL")
+							Log.LogLine("WARNING: SendMessage EM_LINEINDEX failed in CreateGameInfoPage().`n")	
+						offset := ErrorLevel ;this is the character # that starts the last displayable line
+						;Sleep 50
+
+						ErrorLevel := SendMessage(0xB1, offset, -1,,"ahk_id " . hwndSrc)  ; EM_SETSEL  Note, the -1 selects to the end of the text
+						if (ErrorLevel == "FAIL")
+							Log.LogLine("WARNING: SendMessage EM_SETSEL failed in CreateGameInfoPage().`n")
+						success := ErrorLevel ;now select all the overflow text
+						;Sleep 50
+
+						ErrorLevel := SendMessage(0x300,0,0,,"ahk_id " . hwndSrc)   ; WM_CUT    ;Cut overflow text from src edit control
+						if (ErrorLevel == "FAIL")
+							Log.LogLine("WARNING: SendMessage EM_CUT failed in CreateGameInfoPage().`n")
+						if !ClipWait(5) 
+							Log.LogLine("WARNING: Could not save to clipboard in CreateGameInfoPage().`n")
+						Sleep 50 ;required, to avoid side-effects (partial data in screens)
+
+						;ClipWait 5
+						;	if (ErrorLevel == 1)		
+						;		Log.LogLine("WARNING: Could not save to clipboard in CreateGameInfoPage().`n")
+
+						ErrorLevel := SendMessage(0x302,0,0,,"ahk_id " . hwndDest)  ; WM_PASTE  ;Paste this text into the dest edit control
+						if (ErrorLevel == "FAIL")
+							Log.LogLine("WARNING: SendMessage EM_PASTE failed in CreateGameInfoPage().`n")
+						Sleep 100 ;give paste a little extra time (leaving this out can cause partial or no paste issues)
+						clipboard := "" ;clear the clipboard
+
+						;Now get the full line count from the control we just pasted into, then get the delta 
+						;to see if we need to continue.
+						ErrorLevel := SendMessage(0xBA,0,0,,"ahk_id " . hwndDest) ;EM_GETLINECOUNT
+						if (ErrorLevel == "FAIL")
+							Log.LogLine("WARNING: SendMessage EM_GETLINECOUNT failed in CreateGameInfoPage().`n")
+						total_lines := ErrorLevel  ;This is the total line count (including any new overflow)
+
+						delta := total_lines - screen_lines ;this is the number of lines of overflow text
+						;if there's no more overflow text left, then we're done.
+						;otherwise, we continue the loop to create more edit controls.
+						if (delta <= 0)
+						{
+							;make sure there are two edit controls on the screen
+							if (x_pos == edit_margin) ;last control created was on the left side, so create empty one on the right.
+							{
+								destIdx++
+
+								gGui.guiGameInfo_PauseInfo%destIdx% := guiGameInfo.AddEdit("x" . edit_width . " y0 h" . edit_height . " w" . edit_width . " c0xCCCCCC Background0x1F1F1F -VScroll -HScroll -E0x200 vPauseInfo%" . destIdx . "%")
+								gGui.hwndInfo%destIdx% := gGui.guiGameInfo_PauseInfo%destIdx%.Hwnd
+								gGui.guiGameInfo_PauseInfo%destIdx%.Visible := false
+							}
+							
+							break
+						}
+					}
+					else
+						break
+				}
+
+				Clipboard := ClipSaved 	; Restore the original clipboard.
+				Sleep 100
+			}
+		}
+		else ;assetType not "info", so must be an image type
+		{
+			asset_full_path := A_ScriptDir "\assets\" assetType "\" romName "." sType
+
+			gGui.guiGameInfo_PauseImage%assetType% := guiGameInfo.AddPicture("BackgroundTrans vPauseImage%" . assetType . "%", asset_full_path)		
+			gGui.guiGameInfo_PauseImage%assetType%.GetPos(&pause_image_posX, &pause_image_posY, &pause_image_posW, &pause_image_posH)
+	
+			;Resize the image to fit on the screen while preserving aspect ratio
+			image_width := nScreenWidth
+			image_height := image_width * pause_image_posH / pause_image_posW
+	
+			if (image_height > nScreenHeight)
+			{
+				image_height := nScreenHeight
+				image_width := image_height * pause_image_posW / pause_image_posH
+			}
+			
+			;center image
+			image_x := Floor(nScreenWidth / 2 - image_width / 2)
+			image_y := Floor(nScreenHeight / 2 - image_height / 2)
+	
+			gGui.guiGameInfo_PauseImage%assetType%.Move(image_x, image_y, image_width, image_height)
+			gGui.guiGameInfo_PauseImage%assetType%.Visible := false ;hide this for now (PauseKey function will show/hide)
+	
+			;Add this control to the oPauseControl collection manager
+			this.AddPage(assetType, bPageVisible, "guiGameInfo_PauseImage" . assetType)
+		}
+	}
+
+	HasContent()
+	{
+		tp := this._totalPages
+		if (tp > 0)
+			return true
+		
+		return false
+	}
+
+	/**
+	 * Dynamically update the image associated with a particular image type
+	 * 
+	 * @param sType - the type of image ("highscore", "controls", etc.)
+	 * @param hBitmap - bitmap of the image
+	 */
+	SetHighscorePauseImage(hBitmap)
+	{
+		static sType := "highscore"
+
+		gGui.guiGameInfo_PauseImage%sType%.Value := hBitmap
+	    gGui.guiGameInfo_PauseImage%sType%.Move(0, 0, nScreenWidth, nScreenHeight)
+
+		for i, page in this._pages
+		{
+			if (page["type"] == sType)
+				this._pages[i]["visible"] :=  true
+		}  
+	}
+
+	/**
+	 * Set visibility of any highscore images to false
+	 */
+	DisableHighscorePauseImage()
+	{
+		static sType := "highscore"
+
+		for i, page in this._pages
+		{
+			if (page["type"] == sType)
+			{
+				this._pages[i]["visible"] :=  false
+				gGui.guiGameInfo_PauseImage%sType%.Value := void_file
+			}
+		}  
+	}
+
+	CreateNavTriangles()
+	{		
+		global gGui
+
+		dpi:=96/A_ScreenDPI
+
+		verticalCenter := Round(nScreenHeight / 2)
+		topExtent := Round(nScreenHeight * 0.45)
+		bottomExtent := Round(nScreenHeight - (topExtent))
+
+		;**********************************************************************
+		; Draw left triangle
+		;**********************************************************************
+
+		gGui.guiNavLeft := Gui(, "eipGui - guiNavLeft")
+		gGui.guiNavLeft.Opt("-Caption +ToolWindow +LastFound +AlwaysOnTop")
+		gGui.guiNavLeft.BackColor := color_edit_text
+
+		x1 := 40
+		y1 := topExtent
+
+		x2 := 0
+		y2 := verticalCenter
+
+		x3 := 40
+		y3 := bottomExtent
+
+		navRegion := x1/dpi . "-" . y1/dpi . " " . x2/dpi . "-" . y2/dpi . " " . x3/dpi . "-" y3/dpi
+	
+		WinSetRegion navRegion
+
+		;**********************************************************************
+		; Draw right triangle
+		;**********************************************************************
+
+		gGui.guiNavRight := Gui(, "eipGui - guiNavRight")
+		gGui.guiNavRight.Opt("-Caption +ToolWindow +LastFound +AlwaysOnTop")
+		gGui.guiNavRight.BackColor := color_edit_text
+
+		x1 := nScreenWidth - 40
+		y1 := topExtent
+
+		x2 := nScreenWidth
+		y2 := verticalCenter
+
+		x3 := x1
+		y3 := bottomExtent
+		
+		navRegion := x1/dpi . "-" . y1/dpi . " " . x2/dpi . "-" . y2/dpi . " " . x3/dpi . "-" y3/dpi
+		
+		WinSetRegion navRegion
+	}
+
+	ShowNavTriangles()
+	{
+		;gGui.guiNavLeft.Show("NA w" . nScreenWidth . " h" nScreenHeight)
+		;gGui.guiNavRight.Show("NA w" . nScreenWidth . " h" nScreenHeight)
+		
+		SetTimer ShowNow, -1
+
+		ShowNow()
+		{		
+			this._hideNavTriangles := false
+			this._stopFlash := false
+
+			try 
+			{
+				;if (this._totalPages > 1)
+				;{					
+					gGui.guiNavLeft.Show("NA w" . nScreenWidth . " h" nScreenHeight)
+					gGui.guiNavRight.Show("NA w" . nScreenWidth . " h" nScreenHeight)
+
+					WinSetTransparent 200, "ahk_id " gGui.guiNavLeft.Hwnd
+					WinSetTransparent 200, "ahk_id " gGui.guiNavRight.Hwnd
+
+					loop 3
+					{
+						;use transparency to flash since Show() and Hide() mess with the window order
+						Sleep(700)
+						WinSetTransparent 0, "ahk_id " gGui.guiNavRight.Hwnd
+						Sleep(-1)
+
+						if (this._hideNavTriangles)
+							break
+
+						Sleep(400)
+						WinSetTransparent 200, "ahk_id " gGui.guiNavRight.Hwnd
+						Sleep(-1)
+
+						;Used when changing pages
+						if (this._stopFlash)
+							break
+					}
+				;}
+			}
+		}
+	}
+
+	HideNavTriangles()
+	{
+		this._hideNavTriangles := true
+		
+		;if (this._totalPages > 1)
+		;{
+			gGui.guiNavLeft.Hide()
+			gGui.guiNavRight.Hide()
+		;}
+	}
+	
+	CurrentPage
+	{
+		get => this._currentPage
+	}
+
+	CurrentPageType
+	{
+		get => this._pages[this._currentPage]["type"]
+	}
+
+	Active
+	{
+		get => this._active
+	}
+}
+
+ChangeEncoding(&sStr, sFrom, sTo)
+{
+	buf := Buffer(StrPut(sStr, sFrom))
+    StrPut(sStr, buf, sFrom)
+    sStr := StrGet(buf, sTo)
+}
+
+/*
+;Sample code
+global gGui := {}
+
+;Support DPI scaling
+global nScreenWidth := A_ScreenWidth * 96 // A_ScreenDPI
+global nScreenHeight := A_ScreenHeight * 96 // A_ScreenDPI
+
+global color_edit_bg := "0x1F1F1F"
+global color_edit_text := "0xCCCCCC"
+global asset_name := ""
+
+mameinfo_file := A_ScriptDir "\mameinfo.dat"
+mamehistory_file := A_ScriptDir "\history.xml"
+void_file := A_ScriptDir "\void.png"
+
+oMameData := MAMEData(A_ScriptDir)
+
+global rom_name := "asteroid"
+
+global guiGameInfo
+
+CreateGameInfoScreen()
+
+assetTypes := "info"
+oGameInfoDisplay := GameInfoDisplay()
+
+r::
+{
+    Sleep 0
+    Critical
+    oGameInfoDisplay.GoPage("r")
+    Sleep 300
+}
+
+l::
+{
+    Sleep 0
+    Critical
+    oGameInfoDisplay.GoPage("l")
+    Sleep 300
+}
+
+h::
+{
+    Sleep 0
+    Critical
+    oGameInfoDisplay.GoPage("hide")
+    Sleep 300
+}
+
+s::
+{
+    Sleep 0
+    Critical
+    oGameInfoDisplay.GoPage("start")
+    Sleep 300
+}
+*/

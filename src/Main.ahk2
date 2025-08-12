@@ -1,0 +1,819 @@
+/*****************************************************************************
+ * @description arcadeVFE
+ * @file Main.ahk2
+ * @author © 2025 David G. Dahlstrom
+  ****************************************************************************/
+
+/******************************************************************************
+* LICENSE
+* The code in this file is distributed freely on GitHub for hobbyist 
+* users, and may be used and modified freely for personal, non-commercial 
+* use. It may not be sold or distributed with any other product or software 
+* without permission.
+*******************************************************************************/
+
+/***********************************************************************
+* Compiler directives
+************************************************************************/
+global CodeVersion := "1.0.1.0"
+;@Ahk2Exe-Let version = %A_PriorLine~U)^(.+"){1}(.+)".*$~$2%
+;@Ahk2Exe-SetCopyright © 2025 David G. Dahlstrom
+;@Ahk2Exe-SetProductName arcadeVFE
+;@Ahk2Exe-SetDescription arcadeVFE
+;@Ahk2Exe-SetProductVersion %U_version%
+;@Ahk2Exe-SetFileVersion %U_version%
+;***********************************************************************
+
+#Requires AutoHotkey v2.0
+#SingleInstance Force
+
+#include Menu.ahk2
+#include Voice.ahk2
+#include SDL2.ahk2
+#include JSON.ahk
+#include Settings.ahk2
+#include WatchFolder-v2.ahk2
+#include ReadListXML.ahk2
+#include Log.ahk2
+#include Tooltips.ahk2
+#include GuiButtonIcon.ahk2
+#include MAMEData.ahk2
+#include GameInfoDisplay.ahk2
+
+TraySetIcon "joystick.ico"
+
+OnMessage(WM_MOUSEMOVE  := 0x0200, OnMouseEvent)
+OnMessage(WM_MOUSELEAVE := 0x02A3, OnMouseEvent)
+
+;***********************************************************
+;inits for Game information display
+global gGui := {}
+global guiGameInfo := ""
+global sCurrentROM := ""
+global color_edit_bg := "0x1F1F1F"
+global color_edit_text := "0xCCCCCC"
+global nScreenWidth := A_ScreenWidth * 96 // A_ScreenDPI
+global nScreenHeight := A_ScreenHeight * 96 // A_ScreenDPI
+global mameinfo_file := A_ScriptDir "\mameinfo.dat"
+global mamehistory_file := A_ScriptDir "\history.xml"
+global void_file := A_ScriptDir "\void.png"
+global oMameData := MAMEData(mameinfo_file, mamehistory_file)
+global oGameInfoDisplay := GameInfoDisplay()
+;***********************************************************
+
+global SDL2 := SDL2DLL() ;SDL library for game device discovery and polling
+global oVoice := voice_class() ;initialize speech support
+
+;global flags
+global bCancelAssign := false
+global bCancelPoll := false
+global bActive := false
+global bOnlyMonitorWhenApplicationLoaded := false
+global iRawAccelPID := 0
+global sLastActionKey := ""
+global bSuppressLastAccess := false 
+
+;global inits
+global iRestartDelay := 0           ;Delay in between application close and restart (in ms)
+global iCommandLineDelay := 500     ;Delay in between two consecutive command line calls (in ms)
+
+global oTemplates                   ;Object used by the JSON parser to hold the Template list
+global oTweaks                      ;Object used by the JSON parser to hold the Tweaks list
+global oActions	:= Map()			;Object used by the JSON parser to hold the Actions list
+global aDevices := Array()          ;Holds the list of devices (a.k.a. Action Sources)
+global mDeviceIndex := Map()        ;Holds the indexes of the devices in the list
+global mDevices := Map()            ;Holds info for all devices in the list
+global mRomsByName := Map()         ;A dictionary allowing a rom to be looked up by its description
+global aDefaultTemplates := Array() ;The set of default command line templates
+global mROMVersions := Map()        ;Rom versions from 
+
+;Populate the default template array
+aDefaultTemplates.Push('"C:\Program Files\Virtual Controller\VirtualController.exe" /load [profile_name] /run /minimize')
+aDefaultTemplates.Push('"C:\Program Files (x86)\Ultramap\Ultramap.exe" [profile_full_name]')
+
+global sApplicationName := "RetroVRArcade.exe"
+ 
+;folder defaults
+global sConfigFolder := A_ScriptDir "\config"
+global sUserFolder := A_ScriptDir "\user"
+global sLogFolder := A_ScriptDir "\log"
+global sRawAccelFolder := A_ScriptDir "\RawAccel"
+
+;owned filename defaults
+global sUserFile := sUserFolder "\Arcade Controller.bgp"
+global sTemplatesFile := sConfigFolder "\templates.json"
+global sTweaksFile := sConfigFolder "\tweaks.json"
+global sIniFile := sConfigFolder "\vfe.ini"
+global sGamesXMLFile := A_ScriptDir "\games.xml"
+global sRawAccelExe := sRawAccelFolder "\rawaccel.exe"
+
+AppLog.Init(sLogFolder "\log.txt", "VFE") ;initialize the application log
+OnError LogError ;deal with unhandled exceptions
+
+;Create configuration folder if it doesn't already exist
+CreateDirAndLog(sConfigFolder)
+CreateDirAndLog(sUserFolder)
+
+;Process the command line if any args 
+;Currently, the only supported parameter is the name of a specific named/saved *.bgp files
+if (A_Args.Length > 0)
+{
+	AppLog.LogLine("INFO: Ran with command line parameter: `"" A_Args[1] "`"`n") 
+	SplitPath(A_Args[1],,,,&sArgNoExt) 
+	loop files sUserFolder "\*.bgp"
+	{		
+		SplitPath(A_LoopFileName,,,,&sLoopFileNoExt)
+		if (A_LoopFileName = A_Args[1] || sLoopFileNoExt = A_Args[1])
+		{
+			IniWrite(sLoopFileNoExt, sIniFile, "General", "ActionListName")
+			break
+		}
+	}
+}
+else
+{
+	AppLog.LogLine("INFO: Ran with no command line parameter`n") 
+}
+
+;==============================
+;  Main Application Startup
+;==============================
+
+TrayMenu.BuildMenu()         ;Build tray menu
+LoadInit()				     ;Load custom initializations
+LoadTweaks()				 ;Load custom tweaks
+Settings.BuildScreen()       ;Build Settings screen
+Settings.InitDevices()       ;Get and populate the list of devices (a.k.a. Action Sources)
+Settings.ReadTemplates()     ;Populate Template list from JSON file if available
+Settings.ReadActionList()    ;Populate Action list from JSON file if available
+Settings.FillRomList()       ;Populate the ROM list 
+StartRomWatcher()            ;Begin monitoring the rom folder    
+Poll()                       ;Start the button and keyboard polling loop
+
+/**
+ * Load general application settings from vfe.ini.
+ * Set defaults when not found.
+ */
+LoadInit()
+{
+	;Init delay between closing an app and restarting it to 500ms
+	try {
+		global iRestartDelay := IniRead(sIniFile, "General", "RestartDelay")
+	}
+	catch {
+		IniWrite(iRestartDelay, sIniFile, "General", "RestartDelay")
+	}
+
+	;Init delay between two consecutive command line calls to 1000ms
+	try {
+		global iCommandLineDelay := IniRead(sIniFile, "General", "CommandLineDelay")
+	}
+	catch {
+		IniWrite(iCommandLineDelay, sIniFile, "General", "CommandLineDelay")
+	}
+
+	;Init RawAccel path
+	try {
+		sRA := IniRead(sIniFile, "General", "RawAccelExe")
+
+		;in case the folder was moved
+		if (!FileExist(sRA))
+		{
+			if (FileExist(sRawAccelExe))
+				IniWrite(sRawAccelExe, sIniFile, "General", "RawAccelExe")
+		    else
+				global sRawAccelExe := sRA
+		}
+	}
+	catch {
+		IniWrite(sRawAccelExe, sIniFile, "General", "RawAccelExe")
+	}
+}
+
+/**
+ * Load any application-specific tweaks from tweaks.json into oTweaks.
+ * Create a default tweaks.json if not found.
+ */
+LoadTweaks()
+{
+	if (FileExist(sTweaksFile))
+	{
+		sJSON := FileRead(sTweaksFile)
+		global oTweaks := JSON.parse(sJSON)
+	}
+	else
+	{
+		mTweaks := Map()
+
+		;List applications that need to be restarted each time they are run.
+		mTweaks["restart"] := Map()
+		mTweaks["restart"]["VirtualController.exe"] := Map()
+		mTweaks["restart"]["Add new exe here if needed"] := Map()
+
+		sJSON := JSON.stringify(mTweaks)
+
+		fTweaksFile := FileOpen(sTweaksFile, "w")
+
+		fTweaksFile.Write(sJSON)
+		fTweaksFile.Close()
+
+		;Now rebuild the oActions map
+		sJSON := FileRead(sTweaksFile)
+		global oTweaks := JSON.parse(sJSON)
+	}
+}
+
+/**
+ * Initialize the ROM folder watcher. This monitors all the *.zip rom files in the folder for
+ * changes to the last access timestamp. These detections raise a notification that inform
+ * what game has just been loaded.
+ */
+StartRomWatcher()
+{
+	attrib := ""
+	try	attrib := DirExist(gcROMMonitorFolderEdit.Text)  
+	
+	if (attrib)
+	{
+		AppLog.LogLine("INFO: ROM Folder set to: `"" gcROMMonitorFolderEdit.Text ".`n")
+
+		;Ensure all rom files have a last-accessed date/time of a week ago.  This is to address
+		;a Windows deficiency in which the last-access date/time of files is not updated if the file
+		;was previously accessed within the last hour or so (or sometimes since the last boot), so
+		;we want them to look sufficiently old to force Windows to set the access timestamp that will
+		;trigger our notification.
+		FileSetTime DateAdd(A_Now, -7, "days"), gcROMMonitorFolderEdit.Text "\*.zip", "A"
+
+		;Register the folder whose files will be monitored for being accessed. 32 watches for changes
+		;to the file access timestamp, and will notify FileAccess_Callback() when such detections are made.
+		WatchFolder(gcROMMonitorFolderEdit.Text, RomAccess_Event, False, 32)
+	}
+	else
+	{
+		if (gcROMMonitorFolderEdit.Text == "")
+			AppLog.LogLine("INFO: ROM Folder is not configured.`n")
+		else
+			AppLog.LogLine("INFO: ROM Folder: `"" gcROMMonitorFolderEdit.Text "`" is invalid.`n")
+	}
+}
+
+/**
+ * Function called by the WatchFolder folder/file monitor whenever the access
+ * timestamp on a file is changed.
+ * @param Folder - The folder in which a change was detected
+ * @param Changes - The specific changes detected, including the name of the file accessed.
+ */
+RomAccess_Event(Folder, Changes) 
+{
+    static tLastFileName := ""
+
+	if (bSuppressLastAccess)
+	{
+		global bSuppressLastAccess := false
+		return
+	}
+
+	;get the name of the rom file that was accessed
+	For Key, Change In Changes {
+		sNewROMFile := Change.HasOwnProp("Name") ? Change.Name : ""
+	}
+
+	;Changing the timestamp below triggers a second notification, so lets suppress it
+	if (tLastFileName == sNewROMFile)
+	{   
+		tLastFileName := ""
+		return
+	}
+
+	;Force last-access timestamp of game we're about to exit to a week ago. This is to overcome an issue in which
+	;Windows does not natively update this timestamp if it is too recent, so lets make it look old so it does.	
+	;FileSetTime DateAdd(A_Now, -7, "days"), sNewROMFile, "A"
+	if (sCurrentROM) ;sCurrentROM is a global
+		FileSetTime DateAdd(A_Now, -7, "days"), sCurrentRom, "A"
+
+	;tLastFileName := sNewROMFile
+	tLastFileName := sCurrentRom
+
+	;Return if the application is in an inactive state (such when in the Settings screen)
+	;It's important that we don't leave earlier than this point since any file activity can happen in
+	;the dormant state and if it does, we still need to update the timestamps above. Also note that
+	;we don't use the **PAUSE feature of WatchFolder since it has side-effects.
+	if (!bActive)
+		return
+
+	AppLog.LogLine("INFO: ROM file: `"" sNewROMFile "`" was accessed.`n")
+	SplitPath(sNewROMFile,,,,&OutNameNoExt) ;strip off .zip extension
+
+	mIndexer := Map()
+	oAction := GetAction("ROM Monitor", OutNameNoExt, mIndexer)
+
+	;if the action is not defined, then get the Default action (if one exists)
+	if (oAction.Key == "")
+		oAction := GetAction("ROM Monitor", "[Default]", mIndexer)
+	
+	RunAction(oAction) ;execute the action
+
+	;Show game info (but only if the option is turned on and the application is running)
+	if (gcShowGameInfo_Checkbox.Value == true && bOnlyMonitorWhenApplicationLoaded && ProcessExist(sApplicationName))
+	{
+		ShowGameInfo(OutNameNoExt)
+	}
+
+	global sCurrentROM := sNewROMFile
+}
+
+/**
+ * This gets called every 250ms when active. It is active whenever the main monitoring Poll() loop is 
+ * not running and the bOnlyMonitorWhenApplicationLoaded is set to true. If it detects the application has
+ * started/resumed running, it will kill its timer and resume monitoring by calling Poll().
+ */
+ApplicationProcessCheck_Callback()
+{
+	global bCancelPoll
+	global iRawAccelPID
+
+	;Terminate this timer if bCancelPoll gets set
+	if (bCancelPoll)
+	{
+		bCancelPoll := false
+		SetTimer(ApplicationProcessCheck_Callback, 0)
+	}
+
+	;if we are only supposed to monitor when an application is loaded and it is
+	;now loaded, then call Poll() to start/resume monitoring
+	if (bOnlyMonitorWhenApplicationLoaded && ProcessExist(sApplicationName))
+	{
+		AppLog.LogLine("INFO: Application, `"" sApplicationName "`" was detected.`n" )
+
+		;Refresh the sCurrentROM timestamp since it might get replayed
+		if (sCurrentROM) ;sCurrentROM is a global
+		{
+			global bSuppressLastAccess := true
+			FileSetTime DateAdd(A_Now, -7, "days"), sCurrentRom, "A"
+		}
+
+		;Run RawAccel if the option is checked and it's available
+		if (gcRawAccel_Checkbox.Value && FileExist(sRawAccelExe))
+		{
+			SplitPath(sRawAccelExe,,&OutDir)
+			Run sRawAccelExe, OutDir, "Min", &iRawAccelPID
+			AppLog.LogLine("INFO: RawAccel started from: " sRawAccelExe ".`n" )
+		}
+
+		;terminate this timer since Poll() will now take up monitoring 
+		;whether the app subsequently gets turned off
+		SetTimer(ApplicationProcessCheck_Callback, 0) 
+		Poll() 
+	}
+}
+
+/**
+ * Main handler for game controller buttons and keyboard key presses.
+ * 
+ * Set the global bCancelPoll := false to disable polling. 
+ * Call Poll() to start/resume polling.
+ */
+Poll()
+{
+	global bCancelPoll
+	global bActive := true
+	global iRawAccelPID
+
+	if (!bCancelPoll)
+		AppLog.LogLine("INFO: Polling started...`n" )
+
+	;Register plain old AHK hotkeys for keypress handling
+	for device, buttons in oActions
+	{
+		for button, sequences in buttons
+		{
+			if (device == "Keyboard")
+				Hotkey(button, PressedKey_Callback, "On")
+		}
+	}
+
+	; To handle controller button presses we use SDL2 methods that are 
+	; improvements over native AHK, thanks to these sources:
+	; https://www.autohotkey.com/boards/viewtopic.php?t=115995
+	; https://wiki.libsdl.org/SDL2/APIByCategory
+
+	;Create buffer to receive SDL_Event
+    evtBuffer := Buffer(56,0)
+
+	;purge the buffer
+	SDL2.SDL_PumpEvents()
+	SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
+   
+	mIndexer := Map() ;Used to keep track of button/key sequences
+
+    ;Poll for SDL_Event 
+    loop
+    {
+		PollEvent := SDL2.SDL_PollEvent(evtBuffer)
+		evt := SDL2DLL.SDL_Event(evtBuffer)
+
+		;if we are only supposed to monitor when an application is loaded and it is
+		;not currently loaded, then cancel the Poll() loop, and register a timer
+		;to wait for the application to be loaded.
+		if (bOnlyMonitorWhenApplicationLoaded && !ProcessExist(sApplicationName))
+		{
+			AppLog.LogLine("INFO: Application, `"" sApplicationName "`" not detected.`n" )
+
+			;shutdown RawAccel if it is running
+			if (gcRawAccel_Checkbox.Value && iRawAccelPID)
+			{
+				ProcessClose(iRawAccelPID)
+				iRawAccelPID := 0
+				AppLog.LogLine("INFO: RawAccel Closed.`n" )
+			}
+
+			;Turn off the game info display if it is running
+			if (oGameInfoDisplay.Active)
+				oGameInfoDisplay.Clear()
+
+			bCancelPoll := true
+
+			;reset sLastActionKey in case any config changes are made 
+			;externally while the application is closed.
+			global sLastActionKey := ""
+
+			;Start a monitor to poll the application for its resumption
+			SetTimer(ApplicationProcessCheck_Callback)
+		}
+
+		if (bCancelPoll)
+		{
+			AppLog.LogLine("INFO: Polling disabled.`n" )
+
+			SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
+
+			;disable hotkeys too
+			for device, buttons in oActions
+			{
+				for button, sequences in buttons
+				{
+					if (device == "Keyboard")
+						Hotkey(button, PressedKey_Callback, "Off")
+				}
+			}
+
+			;set our global flags
+			bCancelPoll := false 
+			bActive := false
+			break
+		}
+
+		;Handle SDL button press events
+		if (PollEvent)
+		{
+			if (evt.type == SDL_EventType.SDL_QUIT) ; Close event
+			{
+				SDL2.SDL_Quit()		 
+			}
+			else if (evt.type == SDL_EventType.SDL_JOYBUTTONDOWN) ;, SDL_EventType.SDL_JOYBUTTONUP: ; Joy button evt
+			{
+				;Get the next logical action from the action list based on the button press, then run it
+				oAction := GetAction(aDevices[mDeviceIndex[evt.jbutton.which]], evt.jbutton.button, mIndexer)
+				SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)				
+				
+				if (oAction.Key) ;Don't run null actions
+					RunAction(oAction)				
+			}
+		}
+		SDL2.SDL_Delay(1)
+    }
+}
+
+/**
+ * Handler for the "Keyboard" device types.
+ * Performs the action defined by a keyboard hotkey press.
+ * @param HotkeyName 
+ */
+PressedKey_Callback(HotkeyName)
+{
+	static mIndexer := Map()
+
+	;Get the next logical action from the action list based on the key press, then run it
+	oAction := GetAction("Keyboard", HotkeyName, mIndexer)
+	RunAction(oAction)
+}
+
+/**
+ * Get the next logical action. For button presses (keyboard and game controllers) more than one action
+ * can be assigned to a button. In these cases, the action changes sequentially with each button press. This
+ * function returns that next sequential action. 
+ * @param sDevice - Can be a game controller name, "Keyboard", or "ROM Monitor"
+ * @param sAction - Can be the index of a game controller button, a keyboard key (or combo), or a rom name (with no extension)
+ * @param mIndexer - A static Map() provided by the caller to keep track of the sequence.
+ * @returns {Map} - Returns a map containing an action consisting of a verbal annunciation and up to two command lines.
+ */
+GetAction(sDevice, sAction, mIndexer)
+{
+	seq := 1
+	annunc := ""
+	cl := ""
+	cl_2 := ""
+	cl_3 := ""
+
+	for device, buttons in oActions
+		for button, sequences in buttons
+			for sequence, info in sequences
+			{
+				if (device == sDevice && button == sAction)
+				{
+					if (mIndexer.Has(device button))
+					{
+						if (mIndexer[device button] == A_Index)
+						{
+							if (A_Index != sequences.Count)
+							{
+								mIndexer[device button] := A_Index + 1
+								annunc := oActions[device][button][String(A_Index + 1)]["annunciation"]
+								cl := oActions[device][button][String(A_Index + 1)]["command_line"]
+								cl_2 := oActions[device][button][String(A_Index + 1)]["command_line_2"]
+								cl_3 := oActions[device][button][String(A_Index + 1)]["command_line_3"]
+								seq := sequences.Count
+								break 3
+							}
+							else
+							{
+								mIndexer[device button] := 1
+								annunc := oActions[device][button]["1"]["annunciation"]
+								cl := oActions[device][button]["1"]["command_line"]
+								cl_2 := oActions[device][button]["1"]["command_line_2"]
+								cl_3 := oActions[device][button]["1"]["command_line_3"]
+								break 3
+							}
+						}
+					}
+					else 
+					{
+						mIndexer[device button] := 1
+						annunc := info["annunciation"]
+						cl := info["command_line"]
+						cl_2 := info["command_line_2"]
+						cl_3 := info["command_line_3"]
+						break 3
+					}
+				}
+			}
+
+	oAction := Map()
+	oAction.Key := cl cl_2 cl_3
+	oAction.Device := sDevice
+	oAction.Action := sAction
+	oAction.Sequence := seq
+	oAction.Annunciation := annunc
+	oAction.CommandLine := cl
+	oAction.CommandLine_2 := cl_2
+	oAction.CommandLine_3 := cl_3
+	
+	return oAction
+}
+
+/**
+ * Runs the action defined in oAction.  The action consists of an (optional) verbal annunciation
+ * and up to two command lines.
+ * @param oAction 
+ */
+RunAction(oAction)
+{
+	global sLastActionKey
+
+	if (gcAlwaysAnnunciate_Checkbox.Value == 1)
+		oVoice.Speak(oAction.Annunciation)
+
+	;if a keypress action, send the key
+	if (InStr(oAction.CommandLine, "Send Key:"))
+	{
+		iStartPos := InStr(oAction.CommandLine, "{")
+		iEndPos := InStr(oAction.CommandLine, "}")
+		iLength := iEndPos - iStartPos
+
+		;separate down/up actions needed for MAME
+		sKey := SubStr(oAction.CommandLine, iStartPos, iLength)
+		Send sKey " down}"
+		Sleep 30
+		Send sKey " up}"
+
+		return
+	}
+
+	;if a Game Info navigation action, do the nav action
+	if (InStr(oAction.CommandLine, "Send Nav:"))
+	{
+		iStartPos := InStr(oAction.CommandLine, "{") + 1
+		iEndPos := InStr(oAction.CommandLine, "}")
+		iLength := iEndPos - iStartPos
+
+		;extract the nav action
+		sNavAction := SubStr(oAction.CommandLine, iStartPos, iLength)
+
+		Sleep 0
+		;Critical
+
+		Switch sNavAction
+		{
+			Case "Right":
+				oGameInfoDisplay.GoPage("r")
+			Case "Left"	:		
+				oGameInfoDisplay.GoPage("l")
+			Case "Home":	
+			    SplitPath(sCurrentROM,,,,&OutNameNoExt)
+				ShowGameInfo(OutNameNoExt)
+			Case "Exit":			
+				oGameInfoDisplay.Clear()
+
+			Sleep 300
+		}
+
+		return
+	}
+
+	;if a command line action, don't run the same action twice in a row
+	if (oAction.Key != sLastActionKey) 
+	{
+		if (oAction.CommandLine)
+		{
+			if (gcAlwaysAnnunciate_Checkbox.Value == -1)
+				oVoice.Speak(oAction.Annunciation)
+			
+			if (gcBeep_Checkbox.Value == 1)
+				SoundBeep
+			
+			RunCommandLine(oAction.CommandLine)
+			
+			if (oAction.CommandLine_2)
+			{
+				Sleep iCommandLineDelay
+				RunCommandLine(oAction.CommandLine_2)
+			}
+
+			if (oAction.CommandLine_3)
+			{
+				Sleep iCommandLineDelay
+				RunCommandLine(oAction.CommandLine_3)
+			}
+
+			 if (oAction.CommandLine_3)
+				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 ", Command Line 3: " oAction.CommandLine_3 "`n")
+			 else if (oAction.CommandLine_2)
+				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 "`n")
+			 else 
+				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine "`n")
+			}
+
+		sLastActionKey := oAction.Key
+	}
+}
+
+/**
+ * Execute the command line
+ * @param cl - The command line to execute
+ */
+RunCommandLine(cl)
+{
+	sExePath := SubStr(StrReplace(cl, '"'), 1, InStr(StrReplace(cl, '"'), ".exe") + 3)
+
+	SplitPath sExePath, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
+
+	;Check the tweaks.json file to see if this app needs to be restarted
+	sExeName := ""
+	for tweak, j in oTweaks
+	{
+		if (tweak == "restart")
+		{
+			for exe_name, m in j
+			{
+				if (exe_name == OutFileName)
+				{
+					sExeName := exe_name
+					break 2
+				}
+			}
+		}
+	}
+
+	;Restart apps that would invoke multiple instances.	
+	if (sExeName)
+		if (ProcessExist(sExeName))
+			ProcessClose(sExeName)
+	
+	Sleep iRestartDelay
+
+	try Run cl, OutDir
+}
+
+/**
+ * Delete a file or folder and log the activity
+ * @param t - is "D" (directory) or "F" (file)
+ * @param f - is full name and path of the file or folder/directory. 
+ * @returns {Integer} - 0 is success, 1 is failure, -1 means file doesn't exist
+ */
+DeleteAndLog(t, f)
+{
+	if (t == "F")
+	{
+		if (FileExist(f)) 
+		{
+			try {
+				FileDelete(f)
+			}
+			catch as e {
+				AppLog.LogLine("INFO: File could not be deleted: " f ". Error was: " AppLog.FormatErrorMessage(e) "`n")
+				return 1
+			}
+			else {
+				AppLog.LogLine("INFO: Deleted file: " f "`n")
+				return 0
+			}
+		}
+	}
+	if (t == "D")
+	{
+		if (FileExist(f)) 
+		{
+			try {
+				DirDelete(f, true) ;true deletes even if files exist in folder
+			}
+			catch as e {
+				AppLog.LogLine("INFO: Folder could not be deleted: " f ". Error was: " AppLog.FormatErrorMessage(e) "`n")
+				return 1
+			}
+			else {
+				AppLog.LogLine("INFO: Deleted folder: " f "`n")
+				return 0
+			}
+		}
+	}
+
+	return -1
+}
+
+/**
+ * Create a directory and log the activity
+ * @param d - The name of the directory
+ * @returns {Integer} 
+ */
+CreateDirAndLog(d)
+{
+    if (!InStr(FileExist(d), "D"))
+    {
+        try
+        {
+            DirCreate d
+        }
+        catch
+        {
+            AppLog.LogLine("NOTICE: Failed to create folder, " d "`n")
+            return false
+        }
+        else        
+        {
+            AppLog.LogLine("INFO: Created folder, " d "`n")  
+            return true
+        }         
+    }
+
+    return true
+}
+
+/**
+ * Invoke the Game Info display
+ * @param sRomName - the rom name with no extension.
+ */
+ShowGameInfo(sRomName)
+{
+	if (!sRomName)
+		return
+
+	oGameInfoDisplay.Clear()
+	oGameInfoDisplay.CreateGameInfoScreen()
+	oGameInfoDisplay.ShowGameInfoScreen()
+	oGameInfoDisplay.CreateGameInfoPage("info", sRomName) ;create the game info pages
+
+	;Create image pages for any images in the \assets subfolders
+	Loop Files A_ScriptDir "\assets\*.*", "D"
+	{
+		if (FileExist(A_LoopFileDir "\" A_LoopFileName "\" sRomName ".png"))
+		{
+			oGameInfoDisplay.CreateGameInfoPage(A_LoopFileName, sRomName, "png")
+			continue
+		}
+
+		if (FileExist(A_LoopFileDir "\" A_LoopFileName "\" sRomName ".jpg"))
+		{
+			oGameInfoDisplay.CreateGameInfoPage(A_LoopFileName, sRomName, "jpg")
+			continue
+		}
+	}
+
+	oGameInfoDisplay.GoPage("start")
+}
+
+;Log otherwise unhandled errors (spawed by OnError)
+LogError(e, mode)
+{
+    AppLog.LogLine("ERROR: Unhandled exception: " AppLog.FormatErrorMessage(e) "`n")
+    ExitApp
+}

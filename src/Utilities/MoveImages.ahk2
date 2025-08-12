@@ -1,0 +1,11 @@
+#Requires AutoHotkey v2.0
+
+sROMFolder := "D:\Stand Alone\Arcade Time Capsule\RetroVRArcade\Content\Roms"
+sSourceImageFolder := "E:\Development\Projects\BGPS\src\Media\flyers"
+sDestinationFolder := "E:\Development\Projects\BGPS\src\assets\flyers"
+
+Loop Files sROMFolder "\*.zip"
+{
+    SplitPath(A_LoopFileName,,,,&OutNameNoExt)
+    FileCopy(sSourceImageFolder "\" OutNameNoExt ".*", sDestinationFolder)
+}

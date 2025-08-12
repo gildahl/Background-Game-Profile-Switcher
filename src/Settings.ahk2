@@ -1,9 +1,7 @@
 /******************************************************************************
- * @description Settings screen for BGPS
+ * @description Settings screen for arcadeVFE
  * @file Settings.ahk2
  * @author © 2025 David G. Dahlstrom
- * @date 2025/07/30
- * @version 1.0.0.0
  ******************************************************************************/
 
 /******************************************************************************
@@ -47,7 +45,7 @@ class Settings
 		local nButtonWidthWide := 90
 		local nIconButtonWidth := 40
 
-		sSettingsTitle := "Background Game Profile Switcher (BGPS) - Settings"
+		sSettingsTitle := "arcadeVFE (for ATC) - Settings"
 
 		Settings.mMetrics.Width := 900
 		Settings.mMetrics.Height := 750
@@ -68,22 +66,30 @@ class Settings
 		gcROMMonitorFolderEdit.OnEvent("Change", (*) => Settings.ROMMonitorFolderEdit_Change())
 		gcROMMonitorFolderEdit.TT := "Enter the full path to the folder containing your MAME roms.`nThe files in this folder must have an extension of *.zip"
 
-        gcButtonOptionsGroupBox := guiSettings.AddGroupBox("x" 380 " y" 10 " w" 360 " h" 83, "Button Operation Options")
+        gcButtonOptionsGroupBox := guiSettings.AddGroupBox("x" 380 " y" 10 " w" 480 " h" 83, "Button Operation Options")
 
-		gcCommandLine_Radio := guiSettings.AddRadio("Checked " "x" 400 " y" 35, "Use Command Lines")
+		gcCommandLine_Radio := guiSettings.AddRadio("vButtonOptionsGroup Checked " "x" 400 " y" 35, "Use Command Lines")
 		gcCommandLine_Radio.OnEvent("Click", (*) => Settings.CommandLine_Radio_Click())
-		gcCommandLine_Radio.TT := "Check this to creat a command line button action."
+		gcCommandLine_Radio.TT := "Check this to create a command line button action."
 
-		gcSendKey_Radio := guiSettings.AddRadio("vButtonOptionsGroup " "x" 400 " y" 60, "Send Keypress")
+		gcSendKey_Radio := guiSettings.AddRadio("x" 400 " y" 60, "Map Keypress")
 		gcSendKey_Radio.OnEvent("Click", (*) => Settings.SendKey_Radio_Click())
-		gcSendKey_Radio.TT := "Check this to create a keypress action."
+		gcSendKey_Radio.TT := "Check this to map a keypress action."
 
-		gcSendKey_ComboBox := guiSettings.AddComboBox("x" 500 " y" 57 " w" 100 " +BackgroundWhite",)
+		gcGameInfo_Radio := guiSettings.AddRadio("x" 610 " y" 35, "Game Info Navigation")
+		gcGameInfo_Radio.OnEvent("Click", (*) => Settings.GameInfo_Radio_Click())
+		gcGameInfo_Radio.TT := "Check this to map a game info navigation action."
+
+		gcSendKey_ComboBox := guiSettings.AddComboBox("x" 490 " y" 57 " w" 100 " +BackgroundWhite",)
 		gcSendKey_ComboBox.OnEvent("Change", (*) => Settings.SendKey_ComboBox_Change())
 
-		gcSendKey_ComboBox.Add(Settings.FillKeysArray())
+		gcGameInfo_ComboBox := guiSettings.AddComboBox("x" 735 " y" 32 " w" 100 " +BackgroundWhite",)
+		gcGameInfo_ComboBox.OnEvent("Change", (*) => Settings.GameInfo_ComboBox_Change())
 
-		gcButtonOptionsGroupBox.Visible := gcSendKey_Radio.Visible := gcCommandLine_Radio.Visible := gcSendKey_ComboBox.Visible := false
+		gcSendKey_ComboBox.Add(Settings.FillKeysArray())
+		gcGameInfo_ComboBox.Add(["Right","Left","Home","Exit"])
+
+		gcButtonOptionsGroupBox.Visible := gcSendKey_Radio.Visible := gcCommandLine_Radio.Visible := gcSendKey_ComboBox.Visible := gcGameInfo_Radio.Visible := gcGameInfo_ComboBox.Visible := false
 
 		try gcROMMonitorFolderEdit.Text := IniRead(sIniFile, "General", "ROMFolder")
 		Settings.sROMFolderOGText := gcROMMonitorFolderEdit.Text
@@ -109,8 +115,12 @@ class Settings
 		gcROMDropDown.OnEvent("Change", (*) => Settings.ROMDropDown_Change())
 		gcROMDropDown.TT := "Select a MAME game to monitor for activity. If this list has no items,`nmake sure the `"ROM folder to monitor`" field above contains a`nvalid path to a folder containing MAME roms."
 
-		gcROMDropDownGameRom := guiSettings.AddText("x" 373 " y" 90 " w" 150, "")
-		gcROMDropDownGameInfo := guiSettings.AddText("x" 370 " y" 92 " w" 480 " 0x2", "")
+		cBGColor := PixelGetColor(370, 90)
+		WinSetTransColor(cBGColor)
+
+		gcROMDropDownGameRom := guiSettings.AddText("BackgroundTrans x" 373 " y" 90 " w" 480, "")
+		gcROMDropDownGameInfo := guiSettings.AddText("BackgroundTrans x" 370 " y" 92 " w" 480 " 0x1", "")
+		gcROMDropDownGameVersion := guiSettings.AddText("BackgroundTrans x" 370 " y" 92 " w" 480 " 0x2", "")
 
 		gcProfileLabel := guiSettings.AddText("x" 80 " y" 123 " w" 80, "Profile name")
 		gcProfileEdit := guiSettings.AddEdit("x" 150 " y" 120 " w" 592 " +BackgroundWhite",)
@@ -211,7 +221,7 @@ class Settings
 		gcActionListNameEdit := guiSettings.AddEdit("x" Settings.mMetrics.Width - 150 - 30 " y" 350 " w" 150 " +BackgroundWhite",)
 		gcActionListNameEdit.OnEvent("Change", (*) => Settings.ActionListNameEdit_Change())
 		gcActionListNameEdit.OnEvent("LoseFocus", (*) => Settings.ActionListNameEdit_LoseFocus())
-		gcActionListNameEdit.TT := "This is the name that the Action List will be saved as. If you rename this,`nand save it as a new list, you may load it later by launching BGPS with`nthe command line: bgps.exe <list name>."
+		gcActionListNameEdit.TT := "This is the name that the Action List will be saved as. If you rename this,`nand save it as a new list, you may load it later by launching arcadeVFE with`nthe command line: vfe.exe <list name>."
 
 		try gcActionListNameEdit.Text := IniRead(sIniFile, "General", "ActionListName", Settings.sActionListName)
 		Settings.sActionListName := gcActionListNameEdit.Text
@@ -253,19 +263,19 @@ class Settings
 		gcSaveButton.Enabled := false
 		gcSaveButton.TT := "Save the Action List table."
 
-		gcUserPreferencesGroupBox := guiSettings.AddGroupBox("x" 30 " y" 630 " w" 420 " h" 95, "User Preferences")
+		gcUserPreferencesGroupBox := guiSettings.AddGroupBox("x" 30 " y" 630 " w" 540 " h" 95, "User Preferences")
 
 		gcApplication_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 653 " w" 250, "Operate only when this application is running.")
 		gcApplication_Checkbox.OnEvent("Click", (*) => Settings.Application_Checkbox_Click())
 		gcApplication_Checkbox.TT := "This setting is recommended to avoid possible side`neffects when the application is not running."
 
-		try gcApplication_Checkbox.Value := IniRead(sIniFile, "General", "MonitorApplication")
+		try gcApplication_Checkbox.Value := IniRead(sIniFile, "General", "MonitorApplication", 1)
 		
 		gcApplicationEdit := guiSettings.AddEdit("x" 60 " y" 670 " w" 150 " +BackgroundWhite",)
 		gcApplicationEdit.OnEvent("Change", (*) => Settings.ApplicationEdit_Change())
 		gcApplicationEdit.TT := "Enter the name (not including the path) of`nthe executable you want to monitor.`nFor example, RetroVRArcade.exe"
 	
-		try gcApplicationEdit.Text := IniRead(sIniFile, "General", "Application")
+		try gcApplicationEdit.Text := IniRead(sIniFile, "General", "Application", "RetroVRArcade.exe")
 		gcApplication_Checkbox.Enabled := gcApplicationEdit.Text ? true : false
 		global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Enabled && gcApplication_Checkbox.Value == 1
 
@@ -273,7 +283,7 @@ class Settings
 		gcApplicationBrowseButton.OnEvent("Click", (*) => Settings.ApplicationBrowseButton_Click())
 		gcApplicationBrowseButton.TT := "Browse for the executable representing the application you want to monitor."
 
-		gcAlwaysAnnunciate_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 653 " Check3", "Always voice annunciate")
+		gcAlwaysAnnunciate_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 700 " Check3", "Always voice annunciate")
 		gcAlwaysAnnunciate_Checkbox.OnEvent("Click", (*) => Settings.AlwaysAnnunciate_Checkbox_Click())
 		try gcAlwaysAnnunciate_Checkbox.Value := IniRead(sIniFile, "General", "AlwaysAnnunciate", 1)	
 		gcAlwaysAnnunciate_Checkbox.TT := "Adjust when voice annunciation is used.`n`nChecked:      Always annunciate upon new game start.`nUnchecked:  Never annunciate (off).`nMinus:          Only annunciate on a profile change."
@@ -283,18 +293,28 @@ class Settings
 		try gcBeep_Checkbox.Value := IniRead(sIniFile, "General", "BeepOnProfileChange", 0)	
 		gcBeep_Checkbox.TT := "Checked:        Beep whenever a profile is changed.`nUnchecked:   Never beep (off)"
 
-		gcToolTip_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 700, "Show Tooltips")
+		gcToolTip_Checkbox := guiSettings.AddCheckbox("x" 460 " y" 700, "Show Tooltips")
 		gcToolTip_Checkbox.OnEvent("Click", (*) => Settings.ToolTip_Checkbox_Click())
 		try gcToolTip_Checkbox.Value := IniRead(sIniFile, "General", "ShowToolTips", 1)	
 		gcToolTip_Checkbox.TT := "Check or uncheck to show/hide tooltips on this screen."
 
-		gcRawAccel_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 700, "Run RawAccel when the application starts")
+		gcRawAccel_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 700, "Run RawAccel when the application starts.")
 		gcRawAccel_Checkbox.OnEvent("Click", (*) => Settings.RawAccel_Checkbox_Click())
 		try gcRawAccel_Checkbox.Value := IniRead(sIniFile, "General", "LoadRawAccel", 0)	
-		gcRawAccel_Checkbox.TT := "Run RawAccel when the application above starts`nand close it when the application terminates.`n`nRawAccel is expected to be in a subfolder called`n\RawAccel within the BGPS folder."
+		gcRawAccel_Checkbox.TT := "Run RawAccel when the application above starts`nand close it when the application terminates.`n`nRawAccel is expected to be in a subfolder called`n\RawAccel within the arcadeVFE folder."
 
 		if (!FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") || gcApplicationEdit.Text == '' || gcApplication_Checkbox.Value == 0)
 			gcRawAccel_Checkbox.Enabled := false
+        
+		try global sRawAccelExe := IniRead(sIniFile, "General", "RawAccelExe", sRawAccelExe)
+
+		gcShowGameInfo_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 653, "Show Game Info")
+		gcShowGameInfo_Checkbox.OnEvent("Click", (*) => Settings.ShowGameInfo_Checkbox_Click())
+		try gcShowGameInfo_Checkbox.Value := IniRead(sIniFile, "General", "ShowGameInfo", 0)	
+		gcShowGameInfo_Checkbox.TT := "Show Game Info when the application above starts`nand close it when the application terminates."
+
+		if (gcApplicationEdit.Text == '' || gcApplication_Checkbox.Value == 0)
+			gcShowGameInfo_Checkbox.Enabled := false
         
 		try global sRawAccelExe := IniRead(sIniFile, "General", "RawAccelExe", sRawAccelExe)
 		
@@ -490,6 +510,13 @@ class Settings
 				StartRomWatcher()
 			}
 
+			;Refresh the sCurrentROM timestamp since it might get replayed
+			;if (sCurrentROM) ;sCurrentROM is a global
+			;{
+			;	global bSuppressLastAccess := true
+			;	FileSetTime DateAdd(A_Now, -7, "days"), sCurrentRom, "A"
+			;}
+
 			gcSaveButton.Enabled := false
 			guiSettings.Hide()
 			AppLog.LogLine("INFO: Closed Settings dialog.`n")
@@ -526,7 +553,7 @@ class Settings
 		}
 
 		sGameList := Sort(sGameList)            ;sort the list by game name
-		sGameList := Trim(sGameList, "`n")      
+		sGameList := sGameList, "`n"      
 		sGameList := "[Default]`n" sGameList    ;make sure "[Default]" is at the top of the list
 		aGameList := StrSplit(sGameList, "`n")
 
@@ -557,7 +584,7 @@ class Settings
 			;reverted to the current Settings.sActionListName by the control itself anytime it is blank and loses focus.
 
 			result := "Yes"
-			result := MsgBox("You have changed the Action list name.`n`nPress 'Yes' to rename the list or 'No' to keep the previous list and save this one as the new default.`n`nSaved Action lists may be loaded by providing their name as a command line parameter when launching BGPS.", "Action List Rename or Save New?", 4131)
+			result := MsgBox("You have changed the Action list name.`n`nPress 'Yes' to rename the list or 'No' to keep the previous list and save this one as the new default.`n`nSaved Action lists may be loaded by providing their name as a command line parameter when launching arcadeVFE.", "Action List Rename or Save New?", 4131)
 
 			if (result == "Cancel")
 				return
@@ -648,10 +675,7 @@ class Settings
 				gcAssignButton.TT := "Press to assign button from the " gcDevices.Text " device,`nnand add the action to the table."
 				bGameControlVisible := true
 
-				if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
-					gcAssignButton.Enabled := false
-				else 
-					gcAssignButton.Enabled := true
+				Settings.RadioButtonStateUpdate()
 			}
 
 			bROMControlVisible := false
@@ -664,13 +688,16 @@ class Settings
 		gcROMDropDownLabel.Visible := bROMControlVisible
 		gcROMDropDown.Visible := bROMControlVisible
 		gcROMDropDownGameInfo.Visible := bROMControlVisible
+		gcROMDropDownGameVersion.Visible := bROMControlVisible
 		gcROMDropDownGameRom.Visible := bROMControlVisible
 
 		;Set visibility of controls only used in Game Controller mode
 		gcButtonOptionsGroupBox.Visible := bGameControlVisible
 		gcSendKey_Radio.Visible := bGameControlVisible
+		gcGameInfo_Radio.Visible := bGameControlVisible
 		gcCommandLine_Radio.Visible := bGameControlVisible
 		gcSendKey_ComboBox.Visible := bGameControlVisible
+		gcGameInfo_ComboBox.Visible := bGameControlVisible
 	}
 
 	static TemplateEdit_Change(*)
@@ -930,6 +957,16 @@ class Settings
 			gcSendKey_ComboBox.Text := SubStr(gcListView.GetText(iRow, Settings.COMMAND), iStartPos, iLength)
 			gcSendKey_Radio.Value := 1
 		}
+		;handle case where action is a Send Nav action
+		else if (gcListView.GetText(iRow, Settings.DEVICE) != "ROM Monitor" && gcListView.GetText(iRow, Settings.DEVICE) != "Keyboard" && InStr(gcListView.GetText(iRow, Settings.COMMAND), "Send Nav:"))
+		{   
+			iStartPos := InStr(gcListView.GetText(iRow, Settings.COMMAND), "{") + 1 
+			iEndPos := InStr(gcListView.GetText(iRow, Settings.COMMAND), "}")
+			iLength := iEndPos - iStartPos
+
+			gcGameInfo_ComboBox.Text := SubStr(gcListView.GetText(iRow, Settings.COMMAND), iStartPos, iLength)
+			gcGameInfo_Radio.Value := 1
+		}
 		else
 			gcCommandLine_Radio.Value := 1
 		
@@ -1025,26 +1062,29 @@ class Settings
 
 	static SendKey_Radio_Click(*)
 	{
-		if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
-			gcAssignButton.Enabled := false
-		else 
-			gcAssignButton.Enabled := true
+		Settings.RadioButtonStateUpdate()
 	}
 
 	static CommandLine_Radio_Click(*)
 	{
-		if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
-			gcAssignButton.Enabled := false
-		else 
-			gcAssignButton.Enabled := true
+		Settings.RadioButtonStateUpdate()
+	}
+
+	static GameInfo_Radio_Click()
+	{
+		Settings.RadioButtonStateUpdate()
 	}
 
 	static SendKey_ComboBox_Change(*)
 	{
-		if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
-			gcAssignButton.Enabled := false
-		else 
-			gcAssignButton.Enabled := true
+		Settings.RadioButtonStateUpdate()
+		gcSendKey_Radio.Value := true
+	}
+
+	static GameInfo_ComboBox_Change(*)
+	{
+		Settings.RadioButtonStateUpdate()
+		gcGameInfo_Radio.Value := true
 	}
 
 	static ProfileBrowseButton_Click(*)
@@ -1097,11 +1137,17 @@ class Settings
 		global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Enabled && gcApplication_Checkbox.Value == 1
 
 		gcRawAccel_Checkbox.Enabled := FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") && gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
+		gcShowGameInfo_Checkbox.Enabled := gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
 	}
 
 	static RawAccel_Checkbox_Click(*)
 	{
 		IniWrite(gcRawAccel_Checkbox.Value, sIniFile, "General", "LoadRawAccel")
+	}
+
+	static ShowGameInfo_Checkbox_Click()
+	{
+		IniWrite(gcShowGameInfo_Checkbox.Value, sIniFile, "General", "ShowGameInfo")
 	}
 
 	static ApplicationEdit_Change(*)
@@ -1111,6 +1157,7 @@ class Settings
 		global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Enabled && gcApplication_Checkbox.Value == 1
 
 		gcRawAccel_Checkbox.Enabled := FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") && gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
+		gcShowGameInfo_Checkbox.Enabled := gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
 	}
 
 	static ApplicationBrowseButton_Click(*)
@@ -1123,6 +1170,7 @@ class Settings
 		global bOnlyMonitorWhenApplicationLoaded := gcApplication_Checkbox.Enabled && gcApplication_Checkbox.Value == 1
 
 		gcRawAccel_Checkbox.Enabled := FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") && gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
+		gcShowGameInfo_Checkbox.Enabled := gcApplicationEdit.Text && gcApplication_Checkbox.Value ? true : false
 	}
 
 	static ActionListNameEdit_Change(*)
@@ -1239,8 +1287,12 @@ class Settings
 		if (gcSendKey_Radio.Value)
 		{
 			cl := "Send Key: {" gcSendKey_ComboBox.Text "}"
-			pe := ""
-			te := ""
+			pe := te := ""
+		}
+		else if (gcGameInfo_Radio.Value)
+		{
+			cl := "Send Nav: {" gcGameInfo_ComboBox.Text "}"
+			pe := te := ""
 		}
 		else 
 		{
@@ -1409,7 +1461,18 @@ class Settings
 		gcTemplateEdit_3.Text := gcTemplateEdit.Text
 	}
 
+	static RadioButtonStateUpdate()
+	{
+		if (gcSendKey_Radio.Value && gcSendKey_ComboBox.Text == "")
+			gcAssignButton.Enabled := false
+		else 
+			gcAssignButton.Enabled := true
 
+		if (gcGameInfo_Radio.Value && gcGameInfo_ComboBox.Text == "")
+			gcAssignButton.Enabled := false
+		else 
+			gcAssignButton.Enabled := true
+	}
 
 	/**
 	 * A checkbox was clicked, so update control states.
@@ -1553,13 +1616,20 @@ class Settings
 
 	static SetRomInfo()
 	{
-		sYear := sManufacturer := sRom := ""
+		sYear := sManufacturer := sRom := sVersion := ""
 
 		if (gcROMDropDown.Text = "[Default]")
 			gcROMDropDownGameInfo.Text := ""
 
 		try sYear := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, mRomsByName[gcROMDropDown.Text])["year"]
 		try sManufacturer := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, mRomsByName[gcROMDropDown.Text])["manufacturer"]
+		try sVersion := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, mRomsByName[gcROMDropDown.Text])["version"]
+
+		;A couple exceptions
+		if (gcROMDropDown.Text == "Aero Fighters" || gcROMDropDown.Text == "Gain Ground")
+			sVersion := SubStr(sVersion, 1, 30)
+
+		gcROMDropDownGameVersion.Text := sVersion
 
 		if (sManufacturer)
 			gcROMDropDownGameInfo.Text := sManufacturer " (" sYear ")"

@@ -2,8 +2,6 @@
  * @description Class to read truncated MAME ListXML file, Games.xml
  * @file ReadListXML.ahk2
  * @author David G. Dahlstrom
- * @date 2025/07/30
- * @version 1.0.0.0
  ***********************************************************************/
 
 /***********************************************************************
@@ -94,12 +92,20 @@ class ReadListXML
 							this._mXMLInfo[sRomName]["status"] := ""
 							this._mXMLInfo[sRomName]["emulation"] := ""
 							this._mXMLInfo[sRomName]["savestate"] := ""
+							this._mXMLInfo[sRomName]["version"] := ""
 		
 							try this._mXMLInfo[sRomName]["clone_of"] := objNodeList.item(idx).getAttributeNode("cloneof").Value
 							try this._mXMLInfo[sRomName]["rom_of"] := objNodeList.item(idx).getAttributeNode("romof").Value
 
-							element := objNodeList.item(idx).getElementsByTagName("description")							
-							try this._mXMLInfo[sRomName]["description"] := element.item(0).text						
+							element := objNodeList.item(idx).getElementsByTagName("description")	
+							sDescription := element.item(0).text
+							if (InStr(sDescription, "("))
+							{
+								sVersion := SubStr(sDescription, InStr(sDescription, "(") + 1, InStr(sDescription, ")") - InStr(sDescription, "(") - 1 )
+								sDescription := SubStr(sDescription, 1, InStr(sDescription, "(") - 1)	
+							}					
+							try this._mXMLInfo[sRomName]["description"] := Trim(sDescription)	
+							try this._mXMLInfo[sRomName]["version"] := Trim(sVersion)			
 
 							element := objNodeList.item(idx).getElementsByTagName("year")
 							try this._mXMLInfo[sRomName]["year"] := element.item(0).text

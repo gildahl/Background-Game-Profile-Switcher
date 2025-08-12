@@ -1,0 +1,211 @@
+/******************************************************************************
+ * @description MAME data retrieval class
+ * @file MAMEData.ahk2
+ * @author © 2025 David G. Dahlstrom
+ ******************************************************************************/
+
+/***********************************************************************
+* LICENSE
+* The code in this file is free of any license considerations and is
+* regarded by its author to be in the public domain.
+************************************************************************/
+
+#Requires AutoHotkey v2.0
+
+;This class reads the mame history.xml and mameinfo.dat files and
+;combines them for use in the arcadeEIP pause screen.
+class MAMEData
+{
+	__New(mameinfo_file, mamehistory_file)
+	{
+		global
+
+		this._mameinfo_file := ""
+		this._oMameInfo := Array()
+		this._oInfoIndexes := Map()
+		this._mamehistory_file := ""
+		this._mamehistory_version := ""
+		this._mamehistory_date := ""
+		this._mamelistxml_build := ""
+		this._oDom := ""		
+		this._mame_info := ""
+
+		if (FileExist(mamehistory_file))
+		{
+			this._mamehistory_file := mamehistory_file
+
+			;DOM documentation found here
+			;https://docs.microsoft.com/en-us/previous-versions/windows/desktop/ms757828(v=vs.85)?redirectedfrom=MSDN
+			if (FileExist(mamehistory_file) && !IsObject(this._oDOM))
+			{
+				try
+				{
+					this._oDOM := ComObject("MSXML2.DOMDocument.6.0")
+				}
+				catch as e
+				{
+					try
+					{
+						this._oDOM := ComObject("MSXML2.DOMDocument.3.0")
+					}
+					catch as e
+					{
+						;Throw("ERROR: XML Processing Error (MSXML2.DOMDocument.3.0): " FormatErrorMessage(e) "`n", -1)
+					}				
+				}
+
+				this._oDOM.async := false
+				xml_data := FileRead(mamehistory_file)
+				this._oDOM.loadXML(xml_data)			
+				
+				rootNode := this._oDOM.selectSingleNode("//history")
+				nodeId := rootNode.getAttributeNode("version")
+				this._history_version := nodeId.value
+				nodeId := rootNode.getAttributeNode("date")
+				this._history_date := nodeId.value
+			}
+		}
+
+		if (FileExist(mameinfo_file))
+		{
+			this._mameinfo_file := mameinfo_file
+
+			mameinfo := FileRead(mameinfo_file)
+			this._mame_info := mameinfo
+		}
+	}
+
+	;Create a simple index of all $info= entries.  The cost to create this is
+	;low enough and speed benefit high enough for subsequent roms, that we shouldn't
+	;need to do anything fancier than this to keep performance reasonable.
+	CreateInfoIndexes()
+	{
+		mameInfo := this._mame_info
+		oMameInfo := StrSplit(mameInfo, "`r`n")
+		this._oMameInfo := oMameInfo
+		oIndexes := Map()
+
+		szMameInfo := oMameInfo.Length
+
+		Loop szMameInfo
+		{
+			if (SubStr(oMameInfo[A_Index],1,6)) == "$info="
+				oIndexes["" . StrReplace(oMameInfo[A_Index], "$info=", "") . ""] := A_Index
+		}
+
+		this._oInfoIndexes := oIndexes
+		return oIndexes
+	}
+
+	;Retrieve the text for this rom from mameinfo.dat text file
+	GetInfo(rom, sysList:="mame")
+	{
+		infoText := ""
+		foundMame := false
+
+		oInfoIndexes := this._oInfoIndexes
+		szIndex := oInfoIndexes.Count ;are indexes cached?
+
+		if (szIndex == 0) ;if not, create them
+			oInfoIndexes := this.CreateInfoIndexes()	
+		
+		oMameInfo := this._oMameInfo ;array form of the mameinfo.dat file
+		szMameInfo := oMameInfo.Length
+
+		index := oInfoIndexes.Get("" . rom . "", 0)
+
+		;if an index for this rom exists, get the text.
+		if (index)
+		{
+			Loop ;retrieve each line of the text
+			{
+				line := ++index
+
+				if (line > szMameInfo) ;we've reached the end
+					break
+
+				if (SubStr(oMameInfo[line],1,1)) == "#" ;skip comment lines
+					continue
+
+				if (foundMame) ;only bother with $mame entries
+				{
+					if ((SubStr(oMameInfo[line],1,4)) != "$end") 
+						infoText := infoText . oMameInfo[line] . "`n`r" ;read the text
+					else
+						break
+				}
+				else if (!infoText) ;only bother with $mame entries
+				{
+					if (SubStr(oMameInfo[line],1,5)) == "$mame"
+						foundMame := true
+				}			
+			}
+		}
+
+		this._mameinfo_file := infoText
+
+		return infoText
+	}
+
+	;Read from history.xml
+	GetHistory(rom, sysList:="")
+	{
+		if (!this._oDOM)
+			return ""
+
+		entryNodeList := this._oDOM.getElementsByTagName("entry")
+		entryCount := entryNodeList.length
+		systemName := ""
+
+		Loop entryCount
+		{
+			idx := A_index - 1
+
+			entryNode := entryNodeList.item(idx)
+
+			;There can be multiple /system section supporting multiple names for each
+			;description, so check each of these names
+			systemNodes := entryNode.selectNodes("systems/system")	
+			systemNode := systemNodes.nextNode()
+
+			if (systemNode)
+			{
+				Loop
+				{
+					attrbNameNode := systemNode.getAttributeNode("name")
+					systemName := attrbNameNode.value
+					if (systemName == rom) ;if we found it, break
+						break
+					else
+					{					
+						systemNode := systemNodes.nextNode() ;go to next /system section
+						if !systemNode ;if there are no more /system sections, break
+							break
+					}
+				}
+				
+				listName := ""
+			}
+			else if (sysList) ;only bother if a sysList was specified
+			{		
+				softwareNode := entryNode.selectSingleNode("software/item")
+
+				if (softwareNode)
+				{
+					attrbNameNode := softwareNode.getAttributeNode("name")
+					systemName := attrbNameNode.value
+					attrbNameNode := softwareNode.getAttributeNode("list")
+					listName := attrbNameNode.value
+				}			
+			}
+
+			if (systemName == rom && !listName)
+			{
+				nodeId := entryNodeList.item(idx).selectSingleNode("text")
+				this._current_text := nodeId.text
+
+				return nodeId.text
+			}
+		}
+	}
+}

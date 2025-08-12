@@ -1,0 +1,32 @@
+#Requires AutoHotkey v2.0
+
+
+mATCHelper := Map()
+sROMMonitorTitle := "ATC Helper"
+
+mATCHelper.Width := 400
+mATCHelper.Height := 300
+mATCHelper.X := Round((A_ScreenWidth / 2) - (mATCHelper.Width / 2))
+mATCHelper.Y := Round((A_ScreenHeight / 2) - (mATCHelper.Height / 2))
+
+
+guiATCHelper := Gui("-MaximizeBox -MinimizeBox", sROMMonitorTitle)
+
+guiATCHelper.OnEvent("Close", ROMMonitorTitle_Exit)
+
+gcATCHelper_ExitButton := guiATCHelper.AddButton("x" 170 " y" 250 " w" 100, "Close")
+fATCHelper_ExitButton_Click := ATCHelper_ExitButton_Click.Bind()
+gcATCHelper_ExitButton.OnEvent("Click", fATCHelper_ExitButton_Click)
+
+guiATCHelper.Show("x" mATCHelper.X " y" mATCHelper.Y " w" mATCHelper.Width " h" mATCHelper.Height)
+
+
+ROMMonitorTitle_Exit(*)
+{
+
+}
+
+ATCHelper_ExitButton_Click(call1, call2)
+{
+    guiATCHelper.Destroy()  ; Destroy the about box.
+}

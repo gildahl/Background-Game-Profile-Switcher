@@ -1,4 +1,4 @@
-Background Game Profile Switcher (BGPS)
+arcadeVFE
 By David Dahlstrom
 =======================================
 
