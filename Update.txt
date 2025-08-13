@@ -3,10 +3,11 @@ v1.0.1.0
 * Added game information overlay
 * Cleaned ROM list and moved version info under the combobox
 * Added support for keypresses to be mapped to game controller buttons
-* Only display column in the action list 2 and 3 if needed.
+* Only display command columns in the action list if needed. 
 * Reset profile load suppression on application exit.
-* Block running of null button actions which caused side effects.
+* Blocked running of null button actions which caused side effects.
 * Improved method of changing rom file access time to address locks on larger files.
+  (caused profile switching to fail after playing large rom games)
 * Raised frequency of error double-beep (was hard to hear).
 * Beep on profile change off by default.
 * Error message enhancements.

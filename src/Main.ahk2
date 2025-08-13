@@ -22,6 +22,15 @@ global CodeVersion := "1.0.1.0"
 ;@Ahk2Exe-SetDescription arcadeVFE
 ;@Ahk2Exe-SetProductVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
+;@Ahk2Exe-PostExec "UPX.exe" "%A_WorkFileName%"
+;@Ahk2Exe-Cont  -q --all-methods --compress-icons=0, 0,, 1
+;@Ahk2Exe-PostExec "BinMod.exe" "%A_WorkFileName%"
+;@Ahk2Exe-Cont  "11.UPX." "1.UPX!.", 2
+;@Ahk2Exe-Obey U_Bin,= "%A_BasePath~^.+\.%" = "bin" ? "Cont" : "Nop" ; .bin?
+;@Ahk2Exe-Obey U_au, = "%A_IsUnicode%" ? 2 : 1 ; Base file ANSI or Unicode?
+;@Ahk2Exe-PostExec "BinMod.exe" "%A_WorkFileName%"
+;@Ahk2Exe-%U_Bin%  "%U_au%2.>AUTOHOTKEY SCRIPT<. RANDOM"
+;@Ahk2Exe-Cont  "%U_au%.AutoHotkeyGUI.RANDOM"
 ;***********************************************************************
 
 #Requires AutoHotkey v2.0
@@ -41,6 +50,7 @@ global CodeVersion := "1.0.1.0"
 #include GameInfoDisplay.ahk2
 
 TraySetIcon "joystick.ico"
+A_IconTip := "arcadeVFE`nVirtual Front End"
 
 OnMessage(WM_MOUSEMOVE  := 0x0200, OnMouseEvent)
 OnMessage(WM_MOUSELEAVE := 0x02A3, OnMouseEvent)

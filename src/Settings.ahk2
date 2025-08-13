@@ -301,7 +301,7 @@ class Settings
 		gcRawAccel_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 700, "Run RawAccel when the application starts.")
 		gcRawAccel_Checkbox.OnEvent("Click", (*) => Settings.RawAccel_Checkbox_Click())
 		try gcRawAccel_Checkbox.Value := IniRead(sIniFile, "General", "LoadRawAccel", 0)	
-		gcRawAccel_Checkbox.TT := "Run RawAccel when the application above starts`nand close it when the application terminates.`n`nRawAccel is expected to be in a subfolder called`n\RawAccel within the arcadeVFE folder."
+		gcRawAccel_Checkbox.TT := "Run RawAccel when the application starts`nand close it when the application terminates.`n`nRawAccel is expected to be in a subfolder called`n\RawAccel within the arcadeVFE folder."
 
 		if (!FileExist(A_ScriptDir "\RawAccel\rawaccel.exe") || gcApplicationEdit.Text == '' || gcApplication_Checkbox.Value == 0)
 			gcRawAccel_Checkbox.Enabled := false
