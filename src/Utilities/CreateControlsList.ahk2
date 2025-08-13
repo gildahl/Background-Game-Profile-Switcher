@@ -1,0 +1,35 @@
+#Requires AutoHotkey v2.0
+
+/********************************************************************
+ * Utility to create a controls.ini file containing basic control
+ * panel info per-game, from history.xml and the old "classic" 
+ * controls.ini. Any leftovers were manually confirmed from the
+ * Arcade Database site here.
+ * 
+ * http://adb.arcadeitalia.net/dettaglio_mame.php?game_name=pacman 
+ * 
+ ********************************************************************/
+
+#include ..\MAMEData.ahk2
+
+sROMFolder := "D:\Stand Alone\Arcade Time Capsule\RetroVRArcade\Content\Roms"
+mameinfo_file := A_ScriptDir "\mameinfo.dat"
+mamehistory_file := A_ScriptDir "\history.xml"
+fControls := A_ScriptDir "\controls.ini"
+fControlsclassic := A_ScriptDir "\controlsclassic.ini"
+
+oMameData := MAMEData(mameinfo_file, mamehistory_file)
+
+Loop Files sROMFolder "\*.zip"
+{
+	SplitPath(A_LoopFileName,,,,&OutNameNoExt)
+	controls := StrLower(oMameData.GetControls(OutNameNoExt))
+	IniWrite(controls, fControls, "Controls", OutNameNoExt)
+
+	sValue := ""
+	try sValue := IniRead(fControlsclassic, OutNameNoExt, "P1Controls")
+	sValue := SubStr(sValue, 1, InStr(sValue, "+") - 1)
+	sValue := StrLower(sValue)
+	if (!controls)
+		IniWrite(sValue, fControls, "Controls", OutNameNoExt)
+}

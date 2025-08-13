@@ -156,6 +156,7 @@ class MAMEData
 		entryNodeList := this._oDOM.getElementsByTagName("entry")
 		entryCount := entryNodeList.length
 		systemName := ""
+		listName := ""
 
 		Loop entryCount
 		{
@@ -205,6 +206,19 @@ class MAMEData
 				this._current_text := nodeId.text
 
 				return nodeId.text
+			}
+		}
+	}
+
+	GetControls(rom, sysList:="")
+	{
+		sInfo := this.GetHistory(rom, sysList:="")
+
+		Loop Parse sInfo, "`n"
+		{
+			if (InStr(A_LoopField, "Controls:") || InStr(A_LoopField, "Control:") || InStr(A_LoopField, "Control :") || InStr(A_LoopField, "Control per player:"))
+			{
+				return Trim(SubStr(A_LoopField, InStr(A_LoopField, ":") + 1, (StrLen(A_LoopField) - InStr(A_LoopField, ":") + 1)))
 			}
 		}
 	}

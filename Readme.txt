@@ -4,7 +4,7 @@ By David Dahlstrom
 
 Summary
 =======
-Virtual Reality arcades based on MAME, such as ATC, don't need traditional front ends since the player walks the floors of the virtual arcade, choosing games just as in a real arcade. So there's no need for game selection menus, pictures and videos of machines and screens, or background ambiance sounds since all of that is already right in front of you. However, there are still a few key technical benefits, ancillary to game selection, that I felt could be addressed through the use of a specialized front-end designed specifically for the virtual reality arcade.
+Virtual Reality arcades based on MAME, such as ATC, don't need traditional front ends since the player walks the floors of the virtual arcade, choosing games just as in a real arcade. So there's no need for game selection menus, pictures and videos of machines and screens, or background ambiance sounds since all of that is already right in front of you. However, there are still a few key technical benefits that I felt could be addressed with the use of a specialized front-end designed specifically for the virtual reality arcade.
 
 The most important of these is to provide the "run before" function of most traditional front ends, allowing players to run external game controller configuration software for game-specific customization of controllers. This is to permit programmable joysticks and servo sticks to alter their configuration based on the specific game being played; or to do on-the-fly remapping of buttons for say, creating more comfortable layouts or left vs. right hand operation; or for combining game controllers into a single integrated control panel through the use of command-line driven software like "Virtual Controller" that enables multiple input devices to be combined and recognized as single XInput device, a necessity for ATC (see link to the "ATC Monster Control Panel Guide" link below).
 
@@ -52,7 +52,16 @@ ROM Monitor:
 ------------
 To setup a new rom to be monitored, choose "ROM Monitor" from the "Device List" list in the Settings screen, then ensure that the "ROM folder to monitor" field contains the name of the folder containing MAME rom files for your emulator. These must be in *.zip file format. Next, choose a rom from the "Choose ROM" list that you want to trigger an action and use the "Profile name" and "Command line template" fields to configure the specific command line that should execute when that game is loaded. Finally, press the "Assign ROM" button to add the action to the "Action List". 
 
-**Note** If you choose "[Default]" as the rom, the command line action you define will be executed whenever a rom that was NOT otherwise configured is accessed by the emulator. When you use this option, be aware that arcadeVFE is "smart" enough to not execute the same command lines twice in a row. For example, if you switch between two games that use the same profile (such as two default games, or two rotary joystick games that use the same profiles), or exit a game and then restart it, profile loading will be suppressed since that configuration should still be loaded.
+**Note 1** If you choose one of the "[Group...]" options as the rom, you can conveniently assign an action set to a whole group of similarly controlled games. If any of the games in that group are need an alternate configuration on an exception basis, you can simply create another action for that specific rom, and that will override the group.  There is also a "[Default]" action which can be configured for cases where there is neither a rom-specific action nor group action to otherwise handle it.  The following are some examples of Groups.
+
+- [Group, 4-way] : Will auto-assign the defined action to any game whose native controller
+                    is a 4-way joystick and does not have a game-specific action.
+- [Group, 8-way] : Will auto-assign the defined action to any game whose native controller
+                    is a 8-way joystick and does not have a game-specific action.
+- [Group, rotary]: Will auto-assign the defined action to any game whose native controller
+                    is a rotary joystick and does not have a game-specific action.
+
+**Note 2** Be aware that arcadeVFE is "smart" enough to not execute the same command line twice in a row. For example, if you switch between two games that use the same profile (such as two 4-way joystick games that use the same profiles), or exit a game and then restart it, profile loading will be suppressed since that configuration should still be loaded.
 
 Buttons and Key Presses:
 ------------------------
@@ -64,7 +73,7 @@ Voice Annunciation
 ==================
 If you would like arcadeVFE to verbally annunciate an action when it is executed, you may add a phrase to the optional "Voice annunciation phrase" field. You can test the phrase to see what it will sound like by pressing the "Voice Test" button. These phrases can provide reminders about how a game is configured. Some example might be:
 
-* "Use left joystick"
+* "Use left 8 way rotary joystick"
 * "Use right 4 way joystick"
 * "Use trackball with buttons on left"
 
@@ -171,9 +180,11 @@ This option is only available when the "Operate only when this application is ru
 
 Show Game Information
 ---------------------
-This feature will produce a desktop overlay on the primary monitor showing detailed text information, and possibly pictures, pertaining to the game currently running in the emulator. This information may be easily viewed while you are in VR by using your favorite desktop viewport (third party, or probably more typically the one provided with your headset). The text information comes from the mameinfo.dat and history.xml files in the arcadeVFE root folder. This display will automatically unload when the emulator is closed (which is why this feature is also only available when the "Operate only when this application is running" setting is configured).
+This feature will produce a desktop overlay on the primary monitor showing detailed text information, and even pictures, associated with the game currently running in the emulator. This information may be easily viewed while you are in VR by using your favorite desktop viewport (third party, or probably more typically the one provided with your headset). The text information comes from the mameinfo.dat and history.xml files in the arcadeVFE root folder. This display will automatically unload when the emulator is closed (which is why this feature is also only available when the "Operate only when this application is running" setting is configured).
 
 To navigate through the Game Info screens, you will want to assign at least the move "Right" action in the game controller button configuration (and optionally, the "Left", "Start", and "Exit" options), using the "Game Info Navigation" radio switch at the top of the screen. If you would like pictures to be displayed along with the text information, just create a folder within the ..\assets subfolder of arcadeVFE, and fill it with *.jpg or *.png files having root names that are the same as the roms you would like to associate them with. Examples are provided in the ..\assets\cpanels and ..\assets\flyers folders. Feel free to add additional folders as you like.
+
+**Note** Be aware that this feature is NOT compatible with spinner and trackball games if you use mouse clicks as input. Use XInput instead. See the Limitations section at the bottom of this document for more information about this potential issue.
 
 Always voice annunciate
 -----------------------
@@ -187,8 +198,13 @@ Show Tooltips
 -------------
 In addition to this documentation file, the Settings screen implements tooltips on all controls to explain their operation. If you no longer need the tooltips, you can turn them off by unchecking the "Show Tooltips" checkbox.
 
+Issues/Limitations
+==================
+Because this software is not code-integrated with the host emulator, but relies on external automation techniques, there are a few limitations that should be noted. Neither may ever be noticed, but they are good to be aware of.
 
+1. arcadeVFE can only tell when a new game is loaded, but not when it is exited. It can only surmise that you have exited a game when it detects that you have started a new and different game. Consequently, if you exit a game and re-enter the SAME game, arcadeVFE will be oblivious that you did this. This should not affect gameplay at all since whatever profiles were loaded while you were first playing will still be loaded. However, arcadeVFE will not be able to provide feedback (such as a beep or voice annunciation) when restarting the game. Only upon starting a new game.
 
+2. Trackball and spinner games rely on the arcade emulator (such as ATC) to have the focus. The game information window that arcadeVFE overlays over the emulator is therefore designed to not take the focus.  However, any mouse clicks made by the user that occur while the game information is displayed (whether or not you are actually viewing it), will cause the overlay to steal the focus. This means that it is not possible to use mouse buttons as input for trackball and spinner games (such as for a fire button), otherwise focus will be taken away from the emulator and mouse input will stop working. The solution to this is to simply ensure that you are using a (non-mouse) XInput device (or virtual device) button as your fire button, in which case, everything should work as intended. Note that non-trackball and spinner games should be generally immune from this issue, unless you click your mouse while playing, or click on your desktop window with your motion controller.    
 
 
 

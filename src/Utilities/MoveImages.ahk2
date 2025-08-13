@@ -1,8 +1,8 @@
 #Requires AutoHotkey v2.0
 
 sROMFolder := "D:\Stand Alone\Arcade Time Capsule\RetroVRArcade\Content\Roms"
-sSourceImageFolder := "E:\Development\Projects\BGPS\src\Media\flyers"
-sDestinationFolder := "E:\Development\Projects\BGPS\src\assets\flyers"
+sSourceImageFolder := "E:\Development\Projects\arcadeVFE\src\Media\pcb"
+sDestinationFolder := "E:\Development\Projects\arcadeVFE\src\assets\pcb"
 
 Loop Files sROMFolder "\*.zip"
 {

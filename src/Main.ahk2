@@ -21,6 +21,7 @@ global CodeVersion := "1.0.1.0"
 ;@Ahk2Exe-SetProductName arcadeVFE
 ;@Ahk2Exe-SetDescription arcadeVFE
 ;@Ahk2Exe-SetProductVersion %U_version%
+/*
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-PostExec "UPX.exe" "%A_WorkFileName%"
 ;@Ahk2Exe-Cont  -q --all-methods --compress-icons=0, 0,, 1
@@ -31,6 +32,7 @@ global CodeVersion := "1.0.1.0"
 ;@Ahk2Exe-PostExec "BinMod.exe" "%A_WorkFileName%"
 ;@Ahk2Exe-%U_Bin%  "%U_au%2.>AUTOHOTKEY SCRIPT<. RANDOM"
 ;@Ahk2Exe-Cont  "%U_au%.AutoHotkeyGUI.RANDOM"
+*/
 ;***********************************************************************
 
 #Requires AutoHotkey v2.0
@@ -64,9 +66,12 @@ global color_edit_bg := "0x1F1F1F"
 global color_edit_text := "0xCCCCCC"
 global nScreenWidth := A_ScreenWidth * 96 // A_ScreenDPI
 global nScreenHeight := A_ScreenHeight * 96 // A_ScreenDPI
-global mameinfo_file := A_ScriptDir "\mameinfo.dat"
-global mamehistory_file := A_ScriptDir "\history.xml"
-global void_file := A_ScriptDir "\void.png"
+global sMetaFolder := A_ScriptDir "\info"
+global mameinfo_file := sMetaFolder "\mameinfo.dat"
+global mamehistory_file := sMetaFolder "\history.xml"
+global sControlsIniFile := sMetaFolder "\controls.ini"
+global sGamesXMLFile := sMetaFolder "\games.xml"
+global void_file := sMetaFolder "\void.png"
 global oMameData := MAMEData(mameinfo_file, mamehistory_file)
 global oGameInfoDisplay := GameInfoDisplay()
 ;***********************************************************
@@ -109,13 +114,21 @@ global sUserFolder := A_ScriptDir "\user"
 global sLogFolder := A_ScriptDir "\log"
 global sRawAccelFolder := A_ScriptDir "\RawAccel"
 
-;owned filename defaults
-global sUserFile := sUserFolder "\Arcade Controller.bgp"
+;filename defaults
+global sUserFile := sUserFolder "\Arcade Controller.json"
 global sTemplatesFile := sConfigFolder "\templates.json"
 global sTweaksFile := sConfigFolder "\tweaks.json"
 global sIniFile := sConfigFolder "\vfe.ini"
-global sGamesXMLFile := A_ScriptDir "\games.xml"
 global sRawAccelExe := sRawAccelFolder "\rawaccel.exe"
+
+;group constants
+global FOUR_WAY :=   "[Group, 4-way]"
+global EIGHT_WAY :=  "[Group, 8-way]"
+global DUAL :=       "[Group, dual]"
+global DIAGONAL :=   "[Group, diagonal]"
+global ROTARY :=     "[Group, rotary]"
+global SPINNER :=    "[Group, spinner]"
+global TRACKBALL :=  "[Group, trackball]"
 
 AppLog.Init(sLogFolder "\log.txt", "VFE") ;initialize the application log
 OnError LogError ;deal with unhandled exceptions
@@ -125,12 +138,13 @@ CreateDirAndLog(sConfigFolder)
 CreateDirAndLog(sUserFolder)
 
 ;Process the command line if any args 
-;Currently, the only supported parameter is the name of a specific named/saved *.bgp files
+;Currently, the only supported parameter is the name of a specific named/saved
+;<Action list>.json files
 if (A_Args.Length > 0)
 {
 	AppLog.LogLine("INFO: Ran with command line parameter: `"" A_Args[1] "`"`n") 
 	SplitPath(A_Args[1],,,,&sArgNoExt) 
-	loop files sUserFolder "\*.bgp"
+	loop files sUserFolder "\*.json"
 	{		
 		SplitPath(A_LoopFileName,,,,&sLoopFileNoExt)
 		if (A_LoopFileName = A_Args[1] || sLoopFileNoExt = A_Args[1])
@@ -255,7 +269,7 @@ StartRomWatcher()
 		FileSetTime DateAdd(A_Now, -7, "days"), gcROMMonitorFolderEdit.Text "\*.zip", "A"
 
 		;Register the folder whose files will be monitored for being accessed. 32 watches for changes
-		;to the file access timestamp, and will notify FileAccess_Callback() when such detections are made.
+		;to the file access timestamp, and will notify RomAccess_Event() when such detections are made.
 		WatchFolder(gcROMMonitorFolderEdit.Text, RomAccess_Event, False, 32)
 	}
 	else
@@ -317,9 +331,49 @@ RomAccess_Event(Folder, Changes)
 	mIndexer := Map()
 	oAction := GetAction("ROM Monitor", OutNameNoExt, mIndexer)
 
-	;if the action is not defined, then get the Default action (if one exists)
+	;if the action is not defined, then look for a Default action (if one exists)
 	if (oAction.Key == "")
-		oAction := GetAction("ROM Monitor", "[Default]", mIndexer)
+	{
+		;Get the game's native controller info from controls.ini
+		sControl := ""
+		try sControl := IniRead(sControlsIniFile, "Controls", OutNameNoExt)
+
+		sAction := ""
+		;Select the appropriate Default action (if one exists)
+		Switch sControl
+		{
+			Case "4-way joystick":
+				sAction := FOUR_WAY
+			Case "8-way joystick":
+				sAction := EIGHT_WAY
+			Case "8-way joysticks (dual)", "4-way joysticks (dual)":
+				sAction := DUAL
+			Case "4-way joystick (diagonal)":
+				sAction := DIAGONAL
+			Case "8-way joystick (rotary)":
+				sAction := ROTARY
+			Case "spinner":
+				sAction := SPINNER
+			Case "trackball":
+				sAction := TRACKBALL
+		}
+
+		oAction := GetAction("ROM Monitor", sAction, mIndexer)
+		if (oAction.Key)
+			AppLog.LogLine("INFO: Using the " sAction " action for rom: " OutNameNoExt "`n")
+
+		;no hits so far, so attempt to apply a [Default] action (if one exists)
+		if (oAction.Key == "")
+		{
+			oAction := GetAction("ROM Monitor", "[Default]", mIndexer)
+			if (oAction.Key)
+				AppLog.LogLine("INFO: Using the [Default] action for rom: " OutNameNoExt "`n")
+		}
+
+		;we tried everything, so report it to the log
+		if (oAction.Key == "")
+			AppLog.LogLine("INFO: No action could be found for rom: " OutNameNoExt "`n")
+	}
 	
 	RunAction(oAction) ;execute the action
 
@@ -594,7 +648,7 @@ RunAction(oAction)
 		oVoice.Speak(oAction.Annunciation)
 
 	;if a keypress action, send the key
-	if (InStr(oAction.CommandLine, "Send Key:"))
+	if (InStr(oAction.CommandLine, "Send Keypress:"))
 	{
 		iStartPos := InStr(oAction.CommandLine, "{")
 		iEndPos := InStr(oAction.CommandLine, "}")
@@ -610,7 +664,7 @@ RunAction(oAction)
 	}
 
 	;if a Game Info navigation action, do the nav action
-	if (InStr(oAction.CommandLine, "Send Nav:"))
+	if (InStr(oAction.CommandLine, "Game Info Navigation:"))
 	{
 		iStartPos := InStr(oAction.CommandLine, "{") + 1
 		iEndPos := InStr(oAction.CommandLine, "}")

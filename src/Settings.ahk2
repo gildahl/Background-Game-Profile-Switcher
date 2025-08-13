@@ -45,7 +45,7 @@ class Settings
 		local nButtonWidthWide := 90
 		local nIconButtonWidth := 40
 
-		sSettingsTitle := "arcadeVFE (for ATC) - Settings"
+		sSettingsTitle := "arcadeVFE - Settings"
 
 		Settings.mMetrics.Width := 900
 		Settings.mMetrics.Height := 750
@@ -55,6 +55,9 @@ class Settings
 
 		guiSettings.OnEvent("Close", (*) => Settings.Settings_Close())
 
+		;********************************************************************************************************
+		;  Device options
+		;********************************************************************************************************
 		gcDevicesLabel := guiSettings.AddText("x" 30 " y" 10 " w" 250, "Device List")
 
 		gcDevices := guiSettings.AddDropDownList("x" 30 " y" 25 " w" 320 " +BackgroundWhite",)
@@ -118,10 +121,14 @@ class Settings
 		cBGColor := PixelGetColor(370, 90)
 		WinSetTransColor(cBGColor)
 
+		gcROMDropDownController := guiSettings.AddText("BackgroundTrans x" 370 " y" 55 " w" 480 " 0x2", "")
 		gcROMDropDownGameRom := guiSettings.AddText("BackgroundTrans x" 373 " y" 90 " w" 480, "")
 		gcROMDropDownGameInfo := guiSettings.AddText("BackgroundTrans x" 370 " y" 92 " w" 480 " 0x1", "")
 		gcROMDropDownGameVersion := guiSettings.AddText("BackgroundTrans x" 370 " y" 92 " w" 480 " 0x2", "")
 
+		;********************************************************************************************************
+		;  Profiles and Templates
+		;********************************************************************************************************
 		gcProfileLabel := guiSettings.AddText("x" 80 " y" 123 " w" 80, "Profile name")
 		gcProfileEdit := guiSettings.AddEdit("x" 150 " y" 120 " w" 592 " +BackgroundWhite",)
 		gcProfileEdit.OnEvent("Change", (*) => Settings.ProfileEdit_Change())
@@ -139,13 +146,13 @@ class Settings
 
 		gcAddTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 149 " w" nIconButtonWidth)
 		gcAddTemplateButton.OnEvent("Click", (*) => Settings.AddTemplateButton_Click())
-		gcAddTemplateButton.TT := "Add this template definition to the list. It will also`nbe added to the Command Line 2 template list."
+		gcAddTemplateButton.TT := "Add this template definition to the list. It will also`nbe added to the Command Line 2 and 3 template lists."
 		gcAddTemplateButton.Enabled := false
 		GuiButtonIcon(gcAddTemplateButton, 'icons.dll', 127, 's16') ;add (+) icon
 
 		gcRemoveTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*2 - 30 - 2 " y" 149 " w" nIconButtonWidth)
 		gcRemoveTemplateButton.OnEvent("Click", (*) => Settings.RemoveTemplateButton_Click())
-		gcRemoveTemplateButton.TT := "Delete this template definition from the list. It will also`nbe deleted from the Command Line 2 template list."
+		gcRemoveTemplateButton.TT := "Delete this template definition from the list. It will also`nbe deleted from the Command Line 2 and 3 template lists."
 		GuiButtonIcon(gcRemoveTemplateButton, 'icons.dll', 130, 's16') ;remove (-) icon
 
 		gcTestTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth - 30 " y" 149 " w" nIconButtonWidth)
@@ -205,6 +212,9 @@ class Settings
 
 		gcProfileLabel_3.Enabled := gcProfileEdit_3.Enabled := gcProfileBrowseButton_3.Enabled := gcTemplateLabel_3.Enabled := gcTemplateEdit_3.Enabled := false
 
+		;********************************************************************************************************
+		;  Action Table
+		;********************************************************************************************************
 		gcStatusLabel := guiSettings.AddText("Center " "x" 250 " y" 325 " w" 400 " h" 20)
 		gcStatusLabel.SetFont("cRed s10 w600")
 
@@ -225,7 +235,7 @@ class Settings
 
 		try gcActionListNameEdit.Text := IniRead(sIniFile, "General", "ActionListName", Settings.sActionListName)
 		Settings.sActionListName := gcActionListNameEdit.Text
-		global sUserFile := sUserFolder "\" gcActionListNameEdit.Text ".bgp"
+		global sUserFile := sUserFolder "\" gcActionListNameEdit.Text ".json"
 		TrayMenu.SetMenuName("New", Settings.sActionListName)  
 
 		gcListView := guiSettings.AddListView("-Multi" " r" 10 " x" 30 " y" 380 " w" Settings.mMetrics.Width - 30*2 " Grid", ["Device", "Action", "Sequence", "Annunciation", "", "Command", "", "Command 2", "", "", "", "", "Command 3"])
@@ -263,17 +273,20 @@ class Settings
 		gcSaveButton.Enabled := false
 		gcSaveButton.TT := "Save the Action List table."
 
+		;********************************************************************************************************
+		;  User Preferences
+		;********************************************************************************************************
 		gcUserPreferencesGroupBox := guiSettings.AddGroupBox("x" 30 " y" 630 " w" 540 " h" 95, "User Preferences")
 
 		gcApplication_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 653 " w" 250, "Operate only when this application is running.")
 		gcApplication_Checkbox.OnEvent("Click", (*) => Settings.Application_Checkbox_Click())
-		gcApplication_Checkbox.TT := "This setting is recommended to avoid possible side`neffects when the application is not running."
+		gcApplication_Checkbox.TT := "This setting is recommended to keep arcadeVFE`ndormant when the emulator is not running."
 
 		try gcApplication_Checkbox.Value := IniRead(sIniFile, "General", "MonitorApplication", 1)
 		
 		gcApplicationEdit := guiSettings.AddEdit("x" 60 " y" 670 " w" 150 " +BackgroundWhite",)
 		gcApplicationEdit.OnEvent("Change", (*) => Settings.ApplicationEdit_Change())
-		gcApplicationEdit.TT := "Enter the name (not including the path) of`nthe executable you want to monitor.`nFor example, RetroVRArcade.exe"
+		gcApplicationEdit.TT := "Enter the name (not including the path) of the virtual arcade`nexecutable you want to monitor. For example, RetroVRArcade.exe"
 	
 		try gcApplicationEdit.Text := IniRead(sIniFile, "General", "Application", "RetroVRArcade.exe")
 		gcApplication_Checkbox.Enabled := gcApplicationEdit.Text ? true : false
@@ -311,7 +324,7 @@ class Settings
 		gcShowGameInfo_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 653, "Show Game Info")
 		gcShowGameInfo_Checkbox.OnEvent("Click", (*) => Settings.ShowGameInfo_Checkbox_Click())
 		try gcShowGameInfo_Checkbox.Value := IniRead(sIniFile, "General", "ShowGameInfo", 0)	
-		gcShowGameInfo_Checkbox.TT := "Show Game Info when the application above starts`nand close it when the application terminates."
+		gcShowGameInfo_Checkbox.TT := "Show Game Info overlay on the desktop when the application`nstarts and close it when the application terminates.`n`nNote that it is is advised that you DO NOT use this feature if you`nuse mouse clicks as your fire button since any mouse clicks in a`ntrackball or spinner game will cause the game information screen`nto take the focus, and, thus mouse input will be lost.To avoid this,`nuse XInput button input for fire instead."
 
 		if (gcApplicationEdit.Text == '' || gcApplication_Checkbox.Value == 0)
 			gcShowGameInfo_Checkbox.Enabled := false
@@ -493,10 +506,10 @@ class Settings
 				;In this case where there is nothing to save, but the user changed the Action List name, we just
 				;change the name and make that the new default.
 				if (FileExist(sUserFile))
-					try FileMove(sUserFile, sUserFolder "\" gcActionListNameEdit.Text ".bgp")
+					try FileMove(sUserFile, sUserFolder "\" gcActionListNameEdit.Text ".json")
 				TrayMenu.SetMenuName(Settings.sActionListName, gcActionListNameEdit.Text)
 				Settings.sActionListName := gcActionListNameEdit.Text
-				global sUserFile := sUserFolder "\" Settings.sActionListName ".bgp"
+				global sUserFile := sUserFolder "\" Settings.sActionListName ".json"
 				IniWrite(Settings.sActionListName, sIniFile, "General", "ActionListName")
 			}
 		}
@@ -538,6 +551,13 @@ class Settings
 		sGameList := ""          ;used to sort the list
 		gcROMDropDown.Delete()   ;make sure dropdown control is empty
 		mRomsByName["[Default]"] := "[Default]"
+		mRomsByName[FOUR_WAY] := FOUR_WAY
+		mRomsByName[EIGHT_WAY] := EIGHT_WAY
+		mRomsByName[DUAL] := DUAL
+		mRomsByName[DIAGONAL] := DIAGONAL
+		mRomsByName[ROTARY] := ROTARY
+		mRomsByName[SPINNER] := SPINNER
+		mRomsByName[TRACKBALL] := TRACKBALL
 
 		;Loop through all the rom files. These must have a *.zip extension
 		Loop Files gcROMMonitorFolderEdit.Text "\*.zip"
@@ -554,7 +574,7 @@ class Settings
 
 		sGameList := Sort(sGameList)            ;sort the list by game name
 		sGameList := sGameList, "`n"      
-		sGameList := "[Default]`n" sGameList    ;make sure "[Default]" is at the top of the list
+		sGameList := "[Default]`n" FOUR_WAY "`n" EIGHT_WAY "`n" DUAL "`n" DIAGONAL "`n" ROTARY "`n" SPINNER "`n" TRACKBALL "`n" sGameList    ;make sure "[Default]" is at the top of the list
 		aGameList := StrSplit(sGameList, "`n")
 
 		gcROMDropDown.Add(aGameList)
@@ -597,7 +617,7 @@ class Settings
 
 			TrayMenu.SetMenuName(Settings.sActionListName, gcActionListNameEdit.Text)
 			Settings.sActionListName := gcActionListNameEdit.Text
-			global sUserFile := sUserFolder "\" Settings.sActionListName ".bgp"
+			global sUserFile := sUserFolder "\" Settings.sActionListName ".json"
 			IniWrite(Settings.sActionListName, sIniFile, "General", "ActionListName")
 		}
 
@@ -690,6 +710,7 @@ class Settings
 		gcROMDropDownGameInfo.Visible := bROMControlVisible
 		gcROMDropDownGameVersion.Visible := bROMControlVisible
 		gcROMDropDownGameRom.Visible := bROMControlVisible
+		gcROMDropDownController.Visible := bROMControlVisible
 
 		;Set visibility of controls only used in Game Controller mode
 		gcButtonOptionsGroupBox.Visible := bGameControlVisible
@@ -930,10 +951,14 @@ class Settings
 		if (gcListView.GetText(iRow, Settings.DEVICE) == "ROM Monitor")
 		{
 			try {
-				if (gcListView.GetText(iRow, Settings.ACTION) == "[Default]")
-					sGame := "[Default]"
-				else
-					sGame := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, gcListView.GetText(iRow, Settings.ACTION))["description"]
+				Switch gcListView.GetText(iRow, Settings.ACTION)
+				{
+					Case "[Default]", FOUR_WAY, EIGHT_WAY, DUAL, DIAGONAL, ROTARY, SPINNER, TRACKBALL:
+						sGame := gcListView.GetText(iRow, Settings.ACTION)
+					default: 
+						sGame := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, gcListView.GetText(iRow, Settings.ACTION))["description"]
+				}
+
 				gcROMDropDown.Text := sGame
 			}
 			catch
@@ -947,8 +972,8 @@ class Settings
 		gcAnnunciationEdit.Text := gcListView.GetText(iRow, Settings.ANNUNC)
 		gcProfileEdit.Text := gcListView.GetText(iRow, Settings.PROFILE)
 
-		;handle case where action is a Send Key action
-		if (gcListView.GetText(iRow, Settings.DEVICE) != "ROM Monitor" && gcListView.GetText(iRow, Settings.DEVICE) != "Keyboard" && InStr(gcListView.GetText(iRow, Settings.COMMAND), "Send Key:"))
+		;handle case where action is a Send Keypress action
+		if (gcListView.GetText(iRow, Settings.DEVICE) != "ROM Monitor" && gcListView.GetText(iRow, Settings.DEVICE) != "Keyboard" && InStr(gcListView.GetText(iRow, Settings.COMMAND), "Send Keypress:"))
 		{   
 			iStartPos := InStr(gcListView.GetText(iRow, Settings.COMMAND), "{") + 1 
 			iEndPos := InStr(gcListView.GetText(iRow, Settings.COMMAND), "}")
@@ -957,8 +982,8 @@ class Settings
 			gcSendKey_ComboBox.Text := SubStr(gcListView.GetText(iRow, Settings.COMMAND), iStartPos, iLength)
 			gcSendKey_Radio.Value := 1
 		}
-		;handle case where action is a Send Nav action
-		else if (gcListView.GetText(iRow, Settings.DEVICE) != "ROM Monitor" && gcListView.GetText(iRow, Settings.DEVICE) != "Keyboard" && InStr(gcListView.GetText(iRow, Settings.COMMAND), "Send Nav:"))
+		;handle case where action is a Game Info Navigation action
+		else if (gcListView.GetText(iRow, Settings.DEVICE) != "ROM Monitor" && gcListView.GetText(iRow, Settings.DEVICE) != "Keyboard" && InStr(gcListView.GetText(iRow, Settings.COMMAND), "Game Info Navigation:"))
 		{   
 			iStartPos := InStr(gcListView.GetText(iRow, Settings.COMMAND), "{") + 1 
 			iEndPos := InStr(gcListView.GetText(iRow, Settings.COMMAND), "}")
@@ -1286,12 +1311,12 @@ class Settings
 
 		if (gcSendKey_Radio.Value)
 		{
-			cl := "Send Key: {" gcSendKey_ComboBox.Text "}"
+			cl := "Send Keypress: {" gcSendKey_ComboBox.Text "}"
 			pe := te := ""
 		}
 		else if (gcGameInfo_Radio.Value)
 		{
-			cl := "Send Nav: {" gcGameInfo_ComboBox.Text "}"
+			cl := "Game Info Navigation: {" gcGameInfo_ComboBox.Text "}"
 			pe := te := ""
 		}
 		else 
@@ -1618,8 +1643,11 @@ class Settings
 	{
 		sYear := sManufacturer := sRom := sVersion := ""
 
-		if (gcROMDropDown.Text = "[Default]")
-			gcROMDropDownGameInfo.Text := ""
+		Switch gcROMDropDown.Text
+		{
+			Case "[Default]", FOUR_WAY, EIGHT_WAY, DUAL, DIAGONAL, ROTARY, SPINNER, TRACKBALL:
+				gcROMDropDownGameInfo.Text := ""
+		}
 
 		try sYear := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, mRomsByName[gcROMDropDown.Text])["year"]
 		try sManufacturer := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, mRomsByName[gcROMDropDown.Text])["manufacturer"]
@@ -1638,10 +1666,38 @@ class Settings
 
 		try sRom := mRomsByName[gcROMDropDown.Text]
 
-		if (sRom == "[Default]")
-			gcROMDropDownGameRom.Text := ""
-		else
-			gcROMDropDownGameRom.Text := sRom == "" ? sRom : sRom ".zip"
+		Switch sRom
+		{
+			Case "[Default]":
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := ""
+			Case FOUR_WAY:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "4-way joystick games"
+			Case EIGHT_WAY:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "8-way joystick games"
+			Case DUAL:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "Dual joystick games"
+			Case DIAGONAL:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "4-way diagonal joystick games"
+			Case ROTARY:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "Rotary joystick games"
+			Case SPINNER:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "Spinner games"
+			Case TRACKBALL:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "Trackball games"
+			default: 
+				gcROMDropDownGameRom.Text := sRom == "" ? sRom : sRom ".zip"
+				sControl := ""
+				try sControl := IniRead(sControlsIniFile, "Controls", sRom)
+				gcROMDropDownController.Text := sControl
+		}
 
 		gcAssignButton.TT := "Press to add the ROM Monitor action for`nthe " mRomsByName[gcROMDropDown.Text] " rom to the table."
 	}

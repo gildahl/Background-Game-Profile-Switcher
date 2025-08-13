@@ -53,8 +53,12 @@ class GameInfoDisplay
 
 	ShowGameInfoScreen()
 	{
-		guiGameInfo.Opt("-AlwaysOnTop")
-		guiGameInfo.Show("W" nScreenWidth " H" nScreenHeight " X0 Y0")
+		;The "AlwaysOnTop and NA options here are critical to ensuring that the game information window
+		;sits on top of the emulator (such as ATC), but does not take the focus (otherwise trackball and
+		;spinner games will stop seeing the mouse). User mouse clicks or motion controller clicks can also
+		;do this.
+		guiGameInfo.Opt("AlwaysOnTop")
+		guiGameInfo.Show("W" nScreenWidth " H" nScreenHeight " X0 Y0 NA")
 
 		this._active := true
 	}
@@ -321,7 +325,7 @@ class GameInfoDisplay
 			{  
 				ClipSaved := ClipboardAll() ; Save the entire clipboard to a variable.		
 				if (!ClipWait(5)) {
-					Log.LogLine("WARNING: Could not save clipboard in CreateGameInfoPage().`n")
+					AppLog.LogLine("WARNING: Could not save clipboard in CreateGameInfoPage().`n")
 				}
 
 				;Add the first control
@@ -381,7 +385,7 @@ class GameInfoDisplay
 						ErrorLevel := SendMessage(0xBA,0,0,,"ahk_id " . hwndSrc) ;EM_GETLINECOUNT
 					}
 					catch {
-						Log.LogLine("WARNING: SendMessage EM_GETLINECOUNT failed in CreateGameInfoPage().`n")
+						AppLog.LogLine("WARNING: SendMessage EM_GETLINECOUNT failed in CreateGameInfoPage().`n")
 					}
 					total_lines := ErrorLevel  ;This is the total line count (including the overflow)
 
@@ -392,30 +396,30 @@ class GameInfoDisplay
 					{
 						ErrorLevel := SendMessage(0xBB, screen_lines-1, 0,,"ahk_id " . hwndSrc)  ; EM_LINEINDEX
 						if (ErrorLevel == "FAIL")
-							Log.LogLine("WARNING: SendMessage EM_LINEINDEX failed in CreateGameInfoPage().`n")	
+							AppLog.LogLine("WARNING: SendMessage EM_LINEINDEX failed in CreateGameInfoPage().`n")	
 						offset := ErrorLevel ;this is the character # that starts the last displayable line
 						;Sleep 50
 
 						ErrorLevel := SendMessage(0xB1, offset, -1,,"ahk_id " . hwndSrc)  ; EM_SETSEL  Note, the -1 selects to the end of the text
 						if (ErrorLevel == "FAIL")
-							Log.LogLine("WARNING: SendMessage EM_SETSEL failed in CreateGameInfoPage().`n")
+							AppLog.LogLine("WARNING: SendMessage EM_SETSEL failed in CreateGameInfoPage().`n")
 						success := ErrorLevel ;now select all the overflow text
 						;Sleep 50
 
 						ErrorLevel := SendMessage(0x300,0,0,,"ahk_id " . hwndSrc)   ; WM_CUT    ;Cut overflow text from src edit control
 						if (ErrorLevel == "FAIL")
-							Log.LogLine("WARNING: SendMessage EM_CUT failed in CreateGameInfoPage().`n")
+							AppLog.LogLine("WARNING: SendMessage EM_CUT failed in CreateGameInfoPage().`n")
 						if !ClipWait(5) 
-							Log.LogLine("WARNING: Could not save to clipboard in CreateGameInfoPage().`n")
-						Sleep 50 ;required, to avoid side-effects (partial data in screens)
+							AppLog.LogLine("WARNING: Could not save to clipboard in CreateGameInfoPage().`n")
+						Sleep 300 ;required, to avoid side-effects (partial data in screens)
 
 						;ClipWait 5
 						;	if (ErrorLevel == 1)		
-						;		Log.LogLine("WARNING: Could not save to clipboard in CreateGameInfoPage().`n")
+						;		AppLog.LogLine("WARNING: Could not save to clipboard in CreateGameInfoPage().`n")
 
 						ErrorLevel := SendMessage(0x302,0,0,,"ahk_id " . hwndDest)  ; WM_PASTE  ;Paste this text into the dest edit control
 						if (ErrorLevel == "FAIL")
-							Log.LogLine("WARNING: SendMessage EM_PASTE failed in CreateGameInfoPage().`n")
+							AppLog.LogLine("WARNING: SendMessage EM_PASTE failed in CreateGameInfoPage().`n")
 						Sleep 100 ;give paste a little extra time (leaving this out can cause partial or no paste issues)
 						clipboard := "" ;clear the clipboard
 
@@ -423,7 +427,7 @@ class GameInfoDisplay
 						;to see if we need to continue.
 						ErrorLevel := SendMessage(0xBA,0,0,,"ahk_id " . hwndDest) ;EM_GETLINECOUNT
 						if (ErrorLevel == "FAIL")
-							Log.LogLine("WARNING: SendMessage EM_GETLINECOUNT failed in CreateGameInfoPage().`n")
+							AppLog.LogLine("WARNING: SendMessage EM_GETLINECOUNT failed in CreateGameInfoPage().`n")
 						total_lines := ErrorLevel  ;This is the total line count (including any new overflow)
 
 						delta := total_lines - screen_lines ;this is the number of lines of overflow text
