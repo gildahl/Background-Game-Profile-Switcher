@@ -36,12 +36,12 @@ class GameInfoDisplay
 
 	CreateGameInfoScreen()
 	{
-		;global gGui
-		global guiGameInfo
-
-		guiGameInfo := Gui(, "eipGui - guiGameInfo")
+		global guiGameInfo := Gui(, "eipGui - guiGameInfo")
 		guiGameInfo.Opt("-Caption")
 		guiGameInfo.BackColor := "Black" 
+
+		global gcGameInfoPleaseWait := guiGameInfo.AddText("x" 0 " y" nScreenHeight/3 " w" nScreenWidth " h" 300 " 0x1", "Preparing Game Information.`nPlease wait...")
+		gcGameInfopleaseWait.SetFont("cWhite s50")
 
 		;this.CreateNavTriangles()
 
@@ -286,7 +286,8 @@ class GameInfoDisplay
 			;These two "test" controls are used to discover the height of a single row in the edit control
 			;-E0x200 hides the border (corresponds to WS_EX_CLIENTEDGE)
 			;-Hdr removes column header
-			guiGameInfo.SetFont("s16", "Tahoma")
+			iGameInfoFontSize := IniRead(sIniFile, "General", "GameInfoFontSize", iDefaultGameInfoFontSize)
+			guiGameInfo.SetFont("s" iGameInfoFontSize, "Tahoma")
 			gGui.guiGameInfo_PauseTest1 := guiGameInfo.AddEdit("x0 y0 -VScroll -HScroll -E0x200 vPauseTest1 R1")
 			Tst1 := gGui.guiGameInfo_PauseTest1.Hwnd
 
@@ -454,6 +455,8 @@ class GameInfoDisplay
 
 				Clipboard := ClipSaved 	; Restore the original clipboard.
 				Sleep 100
+
+				gcGameInfoPleaseWait.SetFont("cBlack")
 			}
 		}
 		else ;assetType not "info", so must be an image type

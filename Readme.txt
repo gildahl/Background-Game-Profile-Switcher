@@ -4,17 +4,17 @@ By David Dahlstrom
 
 Summary
 =======
-Virtual Reality arcades based on MAME, such as ATC, don't need traditional front ends since the player walks the floors of the virtual arcade, choosing games just as in a real arcade. So there's no need for game selection menus, pictures and videos of machines and screens, or background ambiance sounds since all of that is already right in front of you. However, there are still a few key technical benefits that I felt could be addressed with the use of a specialized front-end designed specifically for the virtual reality arcade.
+Virtual Reality arcades based on MAME, such as ATC, don't need traditional front ends since the player walks the floors of the virtual arcade, choosing games just as in real life. So there's no need for game selection menus, pictures and videos of machines and screens, or background ambiance sounds since that's already right in front of you. However, there are still a few key technical benefits that I felt could be addressed with the use of a specialized front-end designed specifically for the virtual reality arcade.
 
-The most important of these is to provide the "run before" function of most traditional front ends, allowing players to run external game controller configuration software for game-specific customization of controllers. This is to permit programmable joysticks and servo sticks to alter their configuration based on the specific game being played; or to do on-the-fly remapping of buttons for say, creating more comfortable layouts or left vs. right hand operation; or for combining game controllers into a single integrated control panel through the use of command-line driven software like "Virtual Controller" that enables multiple input devices to be combined and recognized as single XInput device, a necessity for ATC (see link to the "ATC Monster Control Panel Guide" link below).
+The most important of these is to provide the "run before" function of most traditional front ends, allowing players to run external game controller configuration software for game-specific, automated customization of controllers. This is to permit programmable joysticks and servo sticks to alter their configuration based on a specific game or group of games being played; or to do on-the-fly remapping of buttons for say, creating more comfortable layouts or left vs. right hand operation; or for combining game controllers into a single integrated control panel through the use of command-line driven software like "Virtual Controller", which enables multiple input devices to be combined and recognized as single XInput device, a necessity for ATC (see link to the "ATC Monster Control Panel Guide" link below).
 
-Thus, a complete list of arcadeVFE's *current* feature set includes:
+A complete list of arcadeVFE's *current* feature set includes:
 
 * Automatic execution of custom command-line driven software whenever a new game is started. 
 * Manual execution of custom command-line driven software whenever a particular keyboard key or game controller button is pressed.
 * Customizable voice annunciation of controller layouts when they are loaded if desired or deemed helpful.
 * Mapping of keyboard keys such as Tab and Enter to controller buttons to (for example) better facilitate access to the MAME Tab configuration menus.
-* And for data nerds like me, a highly detailed game information overlay on the desktop that can be viewed and navigated in VR using one's favorite desktop viewport. This information comes from integrating traditional MAME gameinfo.dat and history.xml files, and can also include pictures of your choice--for example, flyers, pcbs, or pictures of real cab control panels (which can be very handy as a reference in the Candy Cab rooms of ATC).
+* A highly detailed game information overlay on the desktop that can be viewed and navigated in VR using one's favorite desktop viewport. This information comes from MAME gameinfo.dat and history.xml files, and can also include pictures of your choice--for example, flyers, pcbs, or pictures of real cab control panels (which can be very handy as a reference in the Candy Cab rooms of ATC).
 
 Resources
 =========
@@ -71,7 +71,7 @@ To setup a manual action that will run upon a particular button or key press, Ch
 
 Voice Annunciation
 ==================
-If you would like arcadeVFE to verbally annunciate an action when it is executed, you may add a phrase to the optional "Voice annunciation phrase" field. You can test the phrase to see what it will sound like by pressing the "Voice Test" button. These phrases can provide reminders about how a game is configured. Some example might be:
+If you would like arcadeVFE to verbally announce an action when it is executed, you may add a phrase to the optional "Voice annunciation phrase" field. This is highly recommended as it both provides active feedback that the software is working, and can provide the player with reminders about the control configuration for that game. You can test the phrase to see what it will sound like by pressing the "Voice Test" button. These phrases can provide reminders about how a game is configured. Some example might be:
 
 * "Use left 8 way rotary joystick"
 * "Use right 4 way joystick"
@@ -166,7 +166,7 @@ Saves all actions in the table to the <action list name>.vfe file.
 
 User Preferences
 ================
-These options allow the user to make a few adjustments to the operation of arcadeVFE.
+These options allow the user to make a adjustments to the operation of arcadeVFE.
 
 Operate only when this application is running
 ---------------------------------------------

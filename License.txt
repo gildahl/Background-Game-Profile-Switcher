@@ -2,4 +2,4 @@ arcadeVFE
 By David Dahlstrom
 =======================================
 
-This software is distributed freely on GitHub for hobbyist users, and may be used and modified freely for personal, non-commercial use. It may not be sold or distributed with any other product or software without permission. Some included source code files by myself or third parties may provide more permissive or public domain licenses. See the individual source code files for details.
+This software is distributed freely on GitHub for hobbyist users, and may be used and modified freely for personal, non-commercial use. It may not be sold or distributed with any other product or software without permission. Some source code files authored by myself or third parties may provide more permissive, and in some cases, public domain licenses. See the individual source code files for details.

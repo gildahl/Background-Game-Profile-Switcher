@@ -2,7 +2,7 @@
 
 ; Simple Wrapper For SDL2
 
-; hobby77
+; hobby77 (extended by David Dahlstrom)
 
 ; https://wiki.libsdl.org/SDL2
 
@@ -49,6 +49,17 @@ SDL_EventType := {
     SDL_JOYBUTTONUP : 0x604,
     SDL_JOYDEVICEADDED : 0x605,
     SDL_JOYDEVICEREMOVED : 0x606,
+
+    ; Hat values
+    SDL_HAT_CENTERED : 0x00,
+    SDL_HAT_UP : 0x01,
+    SDL_HAT_RIGHT : 0x02,
+    SDL_HAT_DOWN : 0x04,
+    SDL_HAT_LEFT : 0x08,
+    SDL_HAT_RIGHTUP : (0x02|0x01),
+    SDL_HAT_RIGHTDOWN : (0x02|0x04),
+    SDL_HAT_LEFTUP : (0x08|0x01),
+    SDL_HAT_LEFTDOWN : (0x08|0x04),
 
     /* Game controller events */
     SDL_CONTROLLERAXISMOTION : 0x650,
@@ -175,8 +186,7 @@ Class SDL2DLL{
      }
 
     __New() {
-    ;    if !this.LibLoad
-    ;     MsgBox("Error while loading: " this.dll "`nPlease check the dll version")
+
     }
 
     ;SDL_CALL := DllCall("LoadLibrary","str","\SDL2.dll")

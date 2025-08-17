@@ -21,18 +21,6 @@ global CodeVersion := "1.0.1.0"
 ;@Ahk2Exe-SetProductName arcadeVFE
 ;@Ahk2Exe-SetDescription arcadeVFE
 ;@Ahk2Exe-SetProductVersion %U_version%
-/*
-;@Ahk2Exe-SetFileVersion %U_version%
-;@Ahk2Exe-PostExec "UPX.exe" "%A_WorkFileName%"
-;@Ahk2Exe-Cont  -q --all-methods --compress-icons=0, 0,, 1
-;@Ahk2Exe-PostExec "BinMod.exe" "%A_WorkFileName%"
-;@Ahk2Exe-Cont  "11.UPX." "1.UPX!.", 2
-;@Ahk2Exe-Obey U_Bin,= "%A_BasePath~^.+\.%" = "bin" ? "Cont" : "Nop" ; .bin?
-;@Ahk2Exe-Obey U_au, = "%A_IsUnicode%" ? 2 : 1 ; Base file ANSI or Unicode?
-;@Ahk2Exe-PostExec "BinMod.exe" "%A_WorkFileName%"
-;@Ahk2Exe-%U_Bin%  "%U_au%2.>AUTOHOTKEY SCRIPT<. RANDOM"
-;@Ahk2Exe-Cont  "%U_au%.AutoHotkeyGUI.RANDOM"
-*/
 ;***********************************************************************
 
 #Requires AutoHotkey v2.0
@@ -50,6 +38,7 @@ global CodeVersion := "1.0.1.0"
 #include GuiButtonIcon.ahk2
 #include MAMEData.ahk2
 #include GameInfoDisplay.ahk2
+#include PacDrive.ahk2
 
 TraySetIcon "joystick.ico"
 A_IconTip := "arcadeVFE`nVirtual Front End"
@@ -77,6 +66,7 @@ global oGameInfoDisplay := GameInfoDisplay()
 ;***********************************************************
 
 global SDL2 := SDL2DLL() ;SDL library for game device discovery and polling
+global oPacDrive := PacDriveDLL() ;Support for Ultimarc ServoStik rotation
 global oVoice := voice_class() ;initialize speech support
 
 ;global flags
@@ -89,22 +79,27 @@ global sLastActionKey := ""
 global bSuppressLastAccess := false 
 
 ;global inits
-global iRestartDelay := 0           ;Delay in between application close and restart (in ms)
-global iCommandLineDelay := 500     ;Delay in between two consecutive command line calls (in ms)
+global iRestartDelay := 0              ;Delay in between application close and restart (in ms)
+global iCommandLineDelay := 500        ;Delay in between two consecutive command line calls (in ms)
+global iDefaultGameInfoFontSize := 16  ;Default font size in Game Info screens
 
-global oTemplates                   ;Object used by the JSON parser to hold the Template list
-global oTweaks                      ;Object used by the JSON parser to hold the Tweaks list
-global oActions	:= Map()			;Object used by the JSON parser to hold the Actions list
-global aDevices := Array()          ;Holds the list of devices (a.k.a. Action Sources)
-global mDeviceIndex := Map()        ;Holds the indexes of the devices in the list
-global mDevices := Map()            ;Holds info for all devices in the list
-global mRomsByName := Map()         ;A dictionary allowing a rom to be looked up by its description
-global aDefaultTemplates := Array() ;The set of default command line templates
-global mROMVersions := Map()        ;Rom versions from 
+global oTemplates                      ;Object used by the JSON parser to hold the Template list
+global oTweaks                         ;Object used by the JSON parser to hold the Tweaks list
+global oActions	:= Map()		       ;Object used by the JSON parser to hold the Actions list
+global aDevices := Array()             ;Holds the list of devices (a.k.a. Action Sources)
+global mDeviceIndex := Map()           ;Holds the indexes of the devices in the list
+global mDevices := Map()               ;Holds info for all devices in the list
+global mRomsByName := Map()            ;A dictionary allowing a rom to be looked up by its description
+global aDefaultTemplates := Array()    ;The set of default command line templates
+global mROMVersions := Map()           ;Rom versions from listxml (games.xml)
 
-;Populate the default template array
-aDefaultTemplates.Push('"C:\Program Files\Virtual Controller\VirtualController.exe" /load [profile_name] /run /minimize')
-aDefaultTemplates.Push('"C:\Program Files (x86)\Ultramap\Ultramap.exe" [profile_full_name]')
+;Populate the default command line templates
+aDefaultTemplates.Push('"C:\Program Files\Virtual Controller\VirtualController.exe" /load "[profile_name]" /run /minimize')
+aDefaultTemplates.Push('"C:\Program Files (x86)\Ultramap\Ultramap.exe" "[profile_full_name]"')
+
+;Populate built-in commands
+aDefaultTemplates.Push('Set Ultimarc ServoStik: 4-way')
+aDefaultTemplates.Push('Set Ultimarc ServoStik: 8-way')
 
 global sApplicationName := "RetroVRArcade.exe"
  
@@ -118,19 +113,22 @@ global sRawAccelFolder := A_ScriptDir "\RawAccel"
 global sUserFile := sUserFolder "\Arcade Controller.json"
 global sTemplatesFile := sConfigFolder "\templates.json"
 global sTweaksFile := sConfigFolder "\tweaks.json"
-global sIniFile := sConfigFolder "\vfe.ini"
+global sIniFile := sConfigFolder "\arcadeVFE.ini"
 global sRawAccelExe := sRawAccelFolder "\rawaccel.exe"
 
 ;group constants
-global FOUR_WAY :=   "[Group, 4-way]"
+global TWO_WAY_H :=  "[Group, 2-way horizontal]"
+global TWO_WAY_V :=  "[Group, 2-way vertical]"
+global FOUR_WAY  :=  "[Group, 4-way]"
 global EIGHT_WAY :=  "[Group, 8-way]"
-global DUAL :=       "[Group, dual]"
-global DIAGONAL :=   "[Group, diagonal]"
-global ROTARY :=     "[Group, rotary]"
-global SPINNER :=    "[Group, spinner]"
+global ANALOG    :=  "[Group, analog]"
+global DUAL      :=  "[Group, dual]"
+global DIAGONAL  :=  "[Group, diagonal]"
+global ROTARY    :=  "[Group, rotary]"
+global SPINNER   :=  "[Group, spinner]"
 global TRACKBALL :=  "[Group, trackball]"
 
-AppLog.Init(sLogFolder "\log.txt", "VFE") ;initialize the application log
+AppLog.Init(sLogFolder "\log.txt", "arcadeVFE") ;initialize the application log
 OnError LogError ;deal with unhandled exceptions
 
 ;Create configuration folder if it doesn't already exist
@@ -163,24 +161,24 @@ else
 ;  Main Application Startup
 ;==============================
 
-TrayMenu.BuildMenu()         ;Build tray menu
-LoadInit()				     ;Load custom initializations
-LoadTweaks()				 ;Load custom tweaks
-Settings.BuildScreen()       ;Build Settings screen
-Settings.InitDevices()       ;Get and populate the list of devices (a.k.a. Action Sources)
-Settings.ReadTemplates()     ;Populate Template list from JSON file if available
-Settings.ReadActionList()    ;Populate Action list from JSON file if available
-Settings.FillRomList()       ;Populate the ROM list 
-StartRomWatcher()            ;Begin monitoring the rom folder    
-Poll()                       ;Start the button and keyboard polling loop
+TrayMenu.BuildMenu()          ;Build tray menu
+LoadInit()				      ;Load custom initializations
+LoadTweaks()				  ;Load custom tweaks
+Settings.BuildScreen()        ;Build Settings screen
+Settings.InitDevices()        ;Get and populate the list of devices (a.k.a. Action Sources)
+Settings.ReadTemplates()      ;Populate Template list from JSON file if available
+Settings.ReadActionList()     ;Populate Action list from JSON file if available
+Settings.FillRomList()        ;Populate the ROM list 
+StartRomWatcher()             ;Begin monitoring the rom folder    
+Poll()                        ;Start the button and keyboard polling loop
 
 /**
- * Load general application settings from vfe.ini.
+ * Load general application settings from arcadeVFE.ini.
  * Set defaults when not found.
  */
 LoadInit()
 {
-	;Init delay between closing an app and restarting it to 500ms
+	;Initialize delay between closing an app and restarting it to 500ms
 	try {
 		global iRestartDelay := IniRead(sIniFile, "General", "RestartDelay")
 	}
@@ -302,7 +300,7 @@ RomAccess_Event(Folder, Changes)
 		sNewROMFile := Change.HasOwnProp("Name") ? Change.Name : ""
 	}
 
-	;Changing the timestamp below triggers a second notification, so lets suppress it
+	;Changing the timestamp will trigger a second notification, so lets suppress it.
 	if (tLastFileName == sNewROMFile)
 	{   
 		tLastFileName := ""
@@ -311,7 +309,6 @@ RomAccess_Event(Folder, Changes)
 
 	;Force last-access timestamp of game we're about to exit to a week ago. This is to overcome an issue in which
 	;Windows does not natively update this timestamp if it is too recent, so lets make it look old so it does.	
-	;FileSetTime DateAdd(A_Now, -7, "days"), sNewROMFile, "A"
 	if (sCurrentROM) ;sCurrentROM is a global
 		FileSetTime DateAdd(A_Now, -7, "days"), sCurrentRom, "A"
 
@@ -331,7 +328,7 @@ RomAccess_Event(Folder, Changes)
 	mIndexer := Map()
 	oAction := GetAction("ROM Monitor", OutNameNoExt, mIndexer)
 
-	;if the action is not defined, then look for a Default action (if one exists)
+	;if the action is not defined for the game, then look for a Group or Default action (if one exists)
 	if (oAction.Key == "")
 	{
 		;Get the game's native controller info from controls.ini
@@ -339,18 +336,24 @@ RomAccess_Event(Folder, Changes)
 		try sControl := IniRead(sControlsIniFile, "Controls", OutNameNoExt)
 
 		sAction := ""
-		;Select the appropriate Default action (if one exists)
+		;Select the appropriate action as listed in controls.ini (if one exists)
 		Switch sControl
 		{
+			Case "2-way joystick (horizontal)":
+				sAction := TWO_WAY_H
+			Case "2-way joystick (vertical)":
+				sAction := TWO_WAY_V
 			Case "4-way joystick":
 				sAction := FOUR_WAY
 			Case "8-way joystick":
 				sAction := EIGHT_WAY
+			case "analog joystick", "49-way joystick (analog)":
+				sAction := ANALOG
 			Case "8-way joysticks (dual)", "4-way joysticks (dual)":
 				sAction := DUAL
 			Case "4-way joystick (diagonal)":
 				sAction := DIAGONAL
-			Case "8-way joystick (rotary)":
+			Case "8-way joystick (rotary)", "8-way joystick (twist)":
 				sAction := ROTARY
 			Case "spinner":
 				sAction := SPINNER
@@ -362,7 +365,7 @@ RomAccess_Event(Folder, Changes)
 		if (oAction.Key)
 			AppLog.LogLine("INFO: Using the " sAction " action for rom: " OutNameNoExt "`n")
 
-		;no hits so far, so attempt to apply a [Default] action (if one exists)
+		;no Group, so attempt to apply a [Default] action (if one exists)
 		if (oAction.Key == "")
 		{
 			oAction := GetAction("ROM Monitor", "[Default]", mIndexer)
@@ -397,11 +400,11 @@ ApplicationProcessCheck_Callback()
 	global iRawAccelPID
 
 	;Terminate this timer if bCancelPoll gets set
-	if (bCancelPoll)
-	{
-		bCancelPoll := false
-		SetTimer(ApplicationProcessCheck_Callback, 0)
-	}
+	;if (bCancelPoll)
+	;{
+	;	bCancelPoll := false
+	;	SetTimer(ApplicationProcessCheck_Callback, 0)
+	;}
 
 	;if we are only supposed to monitor when an application is loaded and it is
 	;now loaded, then call Poll() to start/resume monitoring
@@ -510,6 +513,7 @@ Poll()
 			AppLog.LogLine("INFO: Polling disabled.`n" )
 
 			SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
+			SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYHATMOTION)
 
 			;disable hotkeys too
 			for device, buttons in oActions
@@ -543,6 +547,61 @@ Poll()
 				if (oAction.Key) ;Don't run null actions
 					RunAction(oAction)				
 			}
+			else if (evt.type == SDL_EventType.SDL_JOYHATMOTION)
+			{
+				;Get the next logical action from the action list based on the button press, then run it
+				if (evt.jhat.hatvalue)
+				{
+					Switch evt.jhat.hatvalue
+					{
+						Case SDL_EventType.SDL_HAT_UP:
+							oAction := GetAction(aDevices[mDeviceIndex[evt.jhat.which]], "DPad Up", mIndexer)
+						Case SDL_EventType.SDL_HAT_RIGHT:
+							oAction := GetAction(aDevices[mDeviceIndex[evt.jhat.which]], "DPad Right", mIndexer)
+						Case SDL_EventType.SDL_HAT_DOWN:
+							oAction := GetAction(aDevices[mDeviceIndex[evt.jhat.which]], "DPad Down", mIndexer)
+						Case SDL_EventType.SDL_HAT_LEFT:
+							oAction := GetAction(aDevices[mDeviceIndex[evt.jhat.which]], "DPad Left", mIndexer)
+					}
+
+					if (oAction.Key) ;Don't run null actions
+						RunAction(oAction)
+				}
+
+				SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYHATMOTION)				
+			}
+
+			/* ;Omit axis handling since it will conflict with gaming
+			else if (evt.type == SDL_EventType.SDL_JOYAXISMOTION)
+			{
+				if (Abs(evt.jaxis.axisValue) >= 32767)
+				{
+					sDirection := ""
+
+					Switch evt.jaxis.axis
+					{
+						Case 0, 2: ;XInput joystick right and left axis values
+							sDirection := evt.jaxis.axisValue > 0 ? "Right" : "Left"
+						Case 1, 3: ;XInput joystick up and down axis values
+							sDirection := evt.jaxis.axisValue > 0 ? "Down" : "Up" 
+						Case 4, 5: ;XInput left and right trigger axis values
+						    if (evt.jaxis.axisValue < 0) ;skip trigger release
+								sDirection := "Skip"
+					}
+
+					if (sDirection != "Skip")
+					{
+						;Get the next logical action from the action list based on the axis movement, then run it
+						oAction := GetAction(aDevices[mDeviceIndex[evt.jaxis.which]], "Axis " evt.jaxis.axis " " sDirection, mIndexer)			
+						
+						if (oAction.Key) ;Don't run null actions
+							RunAction(oAction)	
+					}
+
+					SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYAXISMOTION)	
+				}
+			}
+			*/
 		}
 		SDL2.SDL_Delay(1)
     }
@@ -697,6 +756,8 @@ RunAction(oAction)
 	;if a command line action, don't run the same action twice in a row
 	if (oAction.Key != sLastActionKey) 
 	{
+		AppLog.LogLine("EXECUTING ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence "`n")
+
 		if (oAction.CommandLine)
 		{
 			if (gcAlwaysAnnunciate_Checkbox.Value == -1)
@@ -717,15 +778,8 @@ RunAction(oAction)
 			{
 				Sleep iCommandLineDelay
 				RunCommandLine(oAction.CommandLine_3)
-			}
-
-			 if (oAction.CommandLine_3)
-				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 ", Command Line 3: " oAction.CommandLine_3 "`n")
-			 else if (oAction.CommandLine_2)
-				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine ", Command Line 2: " oAction.CommandLine_2 "`n")
-			 else 
-				AppLog.LogLine("ACTION: Source: " oAction.Device ", Action: " oAction.Action ", Sequence: " oAction.Sequence ", Command Line: " oAction.CommandLine "`n")
-			}
+			}			 
+		}
 
 		sLastActionKey := oAction.Key
 	}
@@ -737,6 +791,21 @@ RunAction(oAction)
  */
 RunCommandLine(cl)
 {
+	if (cl == "Set Ultimarc ServoStik: 4-way")
+	{
+		oPacDrive.PacSetServoStik4Way()
+		AppLog.LogLine("COMMAND: Set Ultimarc ServoStik: 4-way`n")
+		return
+	}
+
+	if (cl == "Set Ultimarc ServoStik: 8-way")
+	{
+		oPacDrive.PacSetServoStik8Way()
+		AppLog.LogLine("COMMAND: Set Ultimarc ServoStik: 8-way`n")
+		return
+	}
+
+
 	sExePath := SubStr(StrReplace(cl, '"'), 1, InStr(StrReplace(cl, '"'), ".exe") + 3)
 
 	SplitPath sExePath, &OutFileName, &OutDir, &OutExtension, &OutNameNoExt, &OutDrive
@@ -761,11 +830,15 @@ RunCommandLine(cl)
 	;Restart apps that would invoke multiple instances.	
 	if (sExeName)
 		if (ProcessExist(sExeName))
+		{
 			ProcessClose(sExeName)
+			AppLog.LogLine("COMMAND: Closed: " sExeName "`n")
+		}
 	
 	Sleep iRestartDelay
 
 	try Run cl, OutDir
+	AppLog.LogLine("COMMAND: Run: " cl "`n")
 }
 
 /**

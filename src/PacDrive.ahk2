@@ -1,0 +1,16 @@
+#Requires AutoHotkey v2.0
+
+#DllLoad "*i %A_ScriptDir%\PacDrive64.dll"
+
+Class PacDriveDLL{
+    
+    __New() {
+        DllCall("LoadLibrary", "str", "PacDrive64.dll")
+        idevices := DllCall("PacDrive64.dll\PacInitialize")
+    }
+
+    PacGetDeviceType(id) => DllCall("PacDrive64.dll\PacGetDeviceType", "UInt", id)
+
+    PacSetServoStik4Way() => DllCall("PacDrive64.dll\PacSetServoStik4Way")
+    PacSetServoStik8Way() => DllCall("PacDrive64.dll\PacSetServoStik8Way")
+}

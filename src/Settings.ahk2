@@ -69,24 +69,24 @@ class Settings
 		gcROMMonitorFolderEdit.OnEvent("Change", (*) => Settings.ROMMonitorFolderEdit_Change())
 		gcROMMonitorFolderEdit.TT := "Enter the full path to the folder containing your MAME roms.`nThe files in this folder must have an extension of *.zip"
 
-        gcButtonOptionsGroupBox := guiSettings.AddGroupBox("x" 380 " y" 10 " w" 480 " h" 83, "Button Operation Options")
+        gcButtonOptionsGroupBox := guiSettings.AddGroupBox("x" 380 " y" 10 " w" 410 " h" 88, "Action Type")
 
-		gcCommandLine_Radio := guiSettings.AddRadio("vButtonOptionsGroup Checked " "x" 400 " y" 35, "Use Command Lines")
+		gcCommandLine_Radio := guiSettings.AddRadio("vButtonOptionsGroup Checked " "x" 400 " y" 35, "Commands")
 		gcCommandLine_Radio.OnEvent("Click", (*) => Settings.CommandLine_Radio_Click())
 		gcCommandLine_Radio.TT := "Check this to create a command line button action."
 
-		gcSendKey_Radio := guiSettings.AddRadio("x" 400 " y" 60, "Map Keypress")
+		gcSendKey_Radio := guiSettings.AddRadio("x" 520 " y" 35, "Map a keypress")
 		gcSendKey_Radio.OnEvent("Click", (*) => Settings.SendKey_Radio_Click())
 		gcSendKey_Radio.TT := "Check this to map a keypress action."
 
-		gcGameInfo_Radio := guiSettings.AddRadio("x" 610 " y" 35, "Game Info Navigation")
+		gcGameInfo_Radio := guiSettings.AddRadio("x" 520 " y" 65, "Game Info navigation")
 		gcGameInfo_Radio.OnEvent("Click", (*) => Settings.GameInfo_Radio_Click())
 		gcGameInfo_Radio.TT := "Check this to map a game info navigation action."
 
-		gcSendKey_ComboBox := guiSettings.AddComboBox("x" 490 " y" 57 " w" 100 " +BackgroundWhite",)
+		gcSendKey_ComboBox := guiSettings.AddComboBox("x" 655 " y" 32 " w" 100 " +BackgroundWhite",)
 		gcSendKey_ComboBox.OnEvent("Change", (*) => Settings.SendKey_ComboBox_Change())
 
-		gcGameInfo_ComboBox := guiSettings.AddComboBox("x" 735 " y" 32 " w" 100 " +BackgroundWhite",)
+		gcGameInfo_ComboBox := guiSettings.AddComboBox("x" 655 " y" 62 " w" 100 " +BackgroundWhite",)
 		gcGameInfo_ComboBox.OnEvent("Change", (*) => Settings.GameInfo_ComboBox_Change())
 
 		gcSendKey_ComboBox.Add(Settings.FillKeysArray())
@@ -121,32 +121,32 @@ class Settings
 		cBGColor := PixelGetColor(370, 90)
 		WinSetTransColor(cBGColor)
 
-		gcROMDropDownController := guiSettings.AddText("BackgroundTrans x" 370 " y" 55 " w" 480 " 0x2", "")
+		gcROMDropDownController := guiSettings.AddText("BackgroundTrans x" 370 " y" 55 " w" 480 " 0x2", "") ;0x2 is for right justification
 		gcROMDropDownGameRom := guiSettings.AddText("BackgroundTrans x" 373 " y" 90 " w" 480, "")
-		gcROMDropDownGameInfo := guiSettings.AddText("BackgroundTrans x" 370 " y" 92 " w" 480 " 0x1", "")
+		gcROMDropDownGameInfo := guiSettings.AddText("BackgroundTrans x" 370 " y" 92 " w" 480 " 0x1", "")   ;0x1 is for center justification
 		gcROMDropDownGameVersion := guiSettings.AddText("BackgroundTrans x" 370 " y" 92 " w" 480 " 0x2", "")
 
 		;********************************************************************************************************
 		;  Profiles and Templates
 		;********************************************************************************************************
-		gcProfileLabel := guiSettings.AddText("x" 80 " y" 123 " w" 80, "Profile name")
+		gcProfileLabel := guiSettings.AddText("x" 60 " y" 123 " w" 80 " 0x2", "Profile")
 		gcProfileEdit := guiSettings.AddEdit("x" 150 " y" 120 " w" 592 " +BackgroundWhite",)
 		gcProfileEdit.OnEvent("Change", (*) => Settings.ProfileEdit_Change())
-		gcProfileEdit.TT := "Enter a profile name to insert into the [profile_name] or`n[profile_full_name] field tag(s) of the Command Line Template."
+		gcProfileEdit.TT := "Enter a profile name to insert into the [profile_name] or`n[profile_full_name] field tag(s) of a command."
 		
 		gcProfileBrowseButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 119 " w" nIconButtonWidth)
 		gcProfileBrowseButton.OnEvent("Click", (*) => Settings.ProfileBrowseButton_Click())
-		gcProfileBrowseButton.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of the Command Line Template."
+		gcProfileBrowseButton.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of the command."
 		GuiButtonIcon(gcProfileBrowseButton, 'imageres.dll', 206, 's16')
 
-		gcTemplateLabel := guiSettings.AddText("x" 60 " y" 146 " w" 80 " 0x2", "Command Line`ntemplate")
+		gcTemplateLabel := guiSettings.AddText("x" 60 " y" 153 " w" 80 " 0x2", "Command")
 		gcTemplateEdit := guiSettings.AddComboBox("x" 150 " y" 150 " w" 592 " +BackgroundWhite",)
 		gcTemplateEdit.OnEvent("Change", (*) => Settings.TemplateEdit_Change())
-		gcTemplateEdit.TT := "A template for the command line which will execute for this action. This template`nmay include field tags such as [profile_name] and [profile_full_name] which will be`nreplaced by the contents of the Profile name field.`n`n[profile_name]`          will be replaced by the profile name`n[profile_full_name]   will be replaced by the profile's full path and filename."
+		gcTemplateEdit.TT := "A template or command which will execute for this action. This template`nmay include field tags such as [profile_name] and [profile_full_name] which will be`nreplaced by the contents of the Profile name field.`n`n[profile_name]`          will be replaced by the profile name`n[profile_full_name]   will be replaced by the profile's full path and filename."
 
 		gcAddTemplateButton := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 149 " w" nIconButtonWidth)
 		gcAddTemplateButton.OnEvent("Click", (*) => Settings.AddTemplateButton_Click())
-		gcAddTemplateButton.TT := "Add this template definition to the list. It will also`nbe added to the Command Line 2 and 3 template lists."
+		gcAddTemplateButton.TT := "Add this template definition to the list. It will also`nbe added to the Command 2 and 3 lists."
 		gcAddTemplateButton.Enabled := false
 		GuiButtonIcon(gcAddTemplateButton, 'icons.dll', 127, 's16') ;add (+) icon
 
@@ -163,20 +163,20 @@ class Settings
 		gcProfile_2_Checkbox.OnEvent("Click", (*) => Settings.Profile_2_Checkbox_Click())
 		gcProfile_2_Checkbox.TT := "Check this to enable configuration of`na second command for the action."
 
-		gcProfileLabel_2 := guiSettings.AddText("x" 73 " y" 193 " w" 80, "Profile name 2")
+		gcProfileLabel_2 := guiSettings.AddText("x" 60 " y" 193 " w" 80 " 0x2", "Profile 2")
 		gcProfileEdit_2 := guiSettings.AddEdit("x" 150 " y" 190 " w" 592 " +BackgroundWhite",)
 		gcProfileEdit_2.OnEvent("Change", (*) => Settings.ProfileEdit_2_Change())
-		gcProfileEdit_2.TT := "Enter a profile name to insert into the [profile_name] or `n[profile_full_name] field tag(s) of the Command Line 2 template."
+		gcProfileEdit_2.TT := "Enter a profile name to insert into the [profile_name] or `n[profile_full_name] field tag(s) of Command 2."
 
 		gcProfileBrowseButton_2 := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 189 " w" nIconButtonWidth)
 		gcProfileBrowseButton_2.OnEvent("Click", (*) => Settings.ProfileBrowseButton_2_Click())
-		gcProfileBrowseButton_2.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of`nthe Command Line 2 template."
+		gcProfileBrowseButton_2.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of`nCommand 2."
 		GuiButtonIcon(gcProfileBrowseButton_2, 'imageres.dll', 206, 's16')
 
-		gcTemplateLabel_2 := guiSettings.AddText("x" 60 " y" 216 " w" 80 " 0x2", "Command Line`ntemplate 2")
+		gcTemplateLabel_2 := guiSettings.AddText("x" 60 " y" 223 " w" 80 " 0x2", "Command 2")
 		gcTemplateEdit_2 := guiSettings.AddComboBox("x" 150 " y" 220 " w" 592 " +BackgroundWhite",)
 		gcTemplateEdit_2.OnEvent("Change", (*) => Settings.TemplateEdit_2_Change())
-		gcTemplateEdit_2.TT := "A template for a second command line that will execute one second after the first. This`ntemplate may include field tags such as [profile_name] and [profile_full_name] which`nwill be replaced by the contents of the Profile name 2 field.`n`n[profile_name]`          will be replaced by profile 2's name`n[profile_full_name]   will be replaced by profile 2's full path and filename."
+		gcTemplateEdit_2.TT := "A template for a second command that will execute after the first. This`ntemplate may include field tags such as [profile_name] and [profile_full_name] which`nwill be replaced by the contents of the Profile 2 field.`n`n[profile_name]`          will be replaced by profile 2's name`n[profile_full_name]   will be replaced by profile 2's full path and filename."
 
 		gcTestTemplateButton_2 := guiSettings.AddButton("x" Settings.mMetrics.Width - nIconButtonWidth*3 - 30 - 4 " y" 219 " w" nIconButtonWidth)
 		gcTestTemplateButton_2.OnEvent("Click", (*) => Settings.TestTemplateButton_2_Click())
@@ -190,7 +190,7 @@ class Settings
 		gcProfile_3_Checkbox.TT := "Check this to enable configuration of`na third command for the action."
 		gcProfile_3_Checkbox.Enabled := false
 
-		gcProfileLabel_3 := guiSettings.AddText("x" 73 " y" 263 " w" 80, "Profile name 3")
+		gcProfileLabel_3 := guiSettings.AddText("x" 60 " y" 263 " w" 80 " 0x2", "Profile 3")
 		gcProfileEdit_3 := guiSettings.AddEdit("x" 150 " y" 260 " w" 592 " +BackgroundWhite",)
 		gcProfileEdit_3.OnEvent("Change", (*) => Settings.ProfileEdit_3_Change())
 		gcProfileEdit_3.TT := "Enter a profile name to insert into the [profile_name] or `n[profile_full_name] field tag(s) of the Command Line 3 template."
@@ -200,7 +200,7 @@ class Settings
 		gcProfileBrowseButton_3.TT := "Browse for a profile to insert into the`n[profile_name] or [profile_full_name] field tag(s) of`nthe Command Line 3 template."
 		GuiButtonIcon(gcProfileBrowseButton_3, 'imageres.dll', 206, 's16')
 
-		gcTemplateLabel_3 := guiSettings.AddText("x" 60 " y" 286 " w" 80 " 0x2", "Command Line`ntemplate 3")
+		gcTemplateLabel_3 := guiSettings.AddText("x" 60 " y" 293 " w" 80 " 0x2", "Command 3")
 		gcTemplateEdit_3 := guiSettings.AddComboBox("x" 150 " y" 290 " w" 592 " +BackgroundWhite",)
 		gcTemplateEdit_3.OnEvent("Change", (*) => Settings.TemplateEdit_3_Change())
 		gcTemplateEdit_3.TT := "A template for a second command line that will execute one second after the second. This`ntemplate may include field tags such as [profile_name] and [profile_full_name] which`nwill be replaced by the contents of the Profile name 3 field.`n`n[profile_name]`          will be replaced by profile 3's name`n[profile_full_name]   will be replaced by profile 3's full path and filename."
@@ -276,7 +276,7 @@ class Settings
 		;********************************************************************************************************
 		;  User Preferences
 		;********************************************************************************************************
-		gcUserPreferencesGroupBox := guiSettings.AddGroupBox("x" 30 " y" 630 " w" 540 " h" 95, "User Preferences")
+		gcUserPreferencesGroupBox := guiSettings.AddGroupBox("x" 30 " y" 630 " w" 580 " h" 95, "User Preferences")
 
 		gcApplication_Checkbox := guiSettings.AddCheckbox("x" 45 " y" 653 " w" 250, "Operate only when this application is running.")
 		gcApplication_Checkbox.OnEvent("Click", (*) => Settings.Application_Checkbox_Click())
@@ -301,7 +301,7 @@ class Settings
 		try gcAlwaysAnnunciate_Checkbox.Value := IniRead(sIniFile, "General", "AlwaysAnnunciate", 1)	
 		gcAlwaysAnnunciate_Checkbox.TT := "Adjust when voice annunciation is used.`n`nChecked:      Always annunciate upon new game start.`nUnchecked:  Never annunciate (off).`nMinus:          Only annunciate on a profile change."
 
-		gcBeep_Checkbox := guiSettings.AddCheckbox("x" 300 " y" 677, "Beep on profile change")
+		gcBeep_Checkbox := guiSettings.AddCheckbox("x" 460 " y" 653, "Beep on profile change")
 		gcBeep_Checkbox.OnEvent("Click", (*) => Settings.Beep_Checkbox_Click())
 		try gcBeep_Checkbox.Value := IniRead(sIniFile, "General", "BeepOnProfileChange", 0)	
 		gcBeep_Checkbox.TT := "Checked:        Beep whenever a profile is changed.`nUnchecked:   Never beep (off)"
@@ -328,6 +328,14 @@ class Settings
 
 		if (gcApplicationEdit.Text == '' || gcApplication_Checkbox.Value == 0)
 			gcShowGameInfo_Checkbox.Enabled := false
+	
+		gcGameInfoFontSizeLabel := guiSettings.AddText("x" 350 " y" 673 " w" 100 " h" 20, "Font Size")
+		gcGameInfoFontSizeLabel.SetFont("s7")
+
+		try iGameInfoFontSize := IniRead(sIniFile, "General", "GameInfoFontSize", iDefaultGameInfoFontSize)
+		gcGameInfoFontSizeEdit := guiSettings.AddEdit("x" 315 " y" 670 " w" 30 " +BackgroundWhite", iGameInfoFontSize)
+		gcGameInfoFontSizeEdit.OnEvent("Change", (*) => Settings.GameInfoFontSizeEdit_Change())
+		gcGameInfoFontSizeEdit.TT := "Enter the font size to be used`nin the Game Information screen."
         
 		try global sRawAccelExe := IniRead(sIniFile, "General", "RawAccelExe", sRawAccelExe)
 		
@@ -534,7 +542,8 @@ class Settings
 			guiSettings.Hide()
 			AppLog.LogLine("INFO: Closed Settings dialog.`n")
 			ToolTip() ;kill any tooltips
-			global bCancel := false
+			;global bCancel := false
+			SetTimer(ApplicationProcessCheck_Callback, 0)
 			Poll() ;resume monitoring
 		}
 		else
@@ -551,8 +560,11 @@ class Settings
 		sGameList := ""          ;used to sort the list
 		gcROMDropDown.Delete()   ;make sure dropdown control is empty
 		mRomsByName["[Default]"] := "[Default]"
+		mRomsByName[TWO_WAY_H] := TWO_WAY_H
+		mRomsByName[TWO_WAY_V] := TWO_WAY_V
 		mRomsByName[FOUR_WAY] := FOUR_WAY
 		mRomsByName[EIGHT_WAY] := EIGHT_WAY
+		mRomsByName[ANALOG] := ANALOG
 		mRomsByName[DUAL] := DUAL
 		mRomsByName[DIAGONAL] := DIAGONAL
 		mRomsByName[ROTARY] := ROTARY
@@ -574,7 +586,7 @@ class Settings
 
 		sGameList := Sort(sGameList)            ;sort the list by game name
 		sGameList := sGameList, "`n"      
-		sGameList := "[Default]`n" FOUR_WAY "`n" EIGHT_WAY "`n" DUAL "`n" DIAGONAL "`n" ROTARY "`n" SPINNER "`n" TRACKBALL "`n" sGameList    ;make sure "[Default]" is at the top of the list
+		sGameList := "[Default]`n" TWO_WAY_H "`n" TWO_WAY_V "`n" FOUR_WAY "`n" EIGHT_WAY "`n" ANALOG "`n" DUAL "`n" DIAGONAL "`n" ROTARY "`n" SPINNER "`n" TRACKBALL "`n" sGameList    ;make sure "[Default]" is at the top of the list
 		aGameList := StrSplit(sGameList, "`n")
 
 		gcROMDropDown.Add(aGameList)
@@ -661,6 +673,8 @@ class Settings
 
 		gcSaveButton.Enabled := false
 
+		Settings.RefreshList()
+
 		AppLog.LogLine("INFO: Saved Action list as `"" sUserFile "`".`n")
 	}
 
@@ -692,7 +706,7 @@ class Settings
 			else ;must be a game controller
 			{
 				gcAssignButton.Text := "Assign Button"
-				gcAssignButton.TT := "Press to assign button from the " gcDevices.Text " device,`nnand add the action to the table."
+				gcAssignButton.TT := "Press to assign button from the " gcDevices.Text " device,`nand add the action to the table."
 				bGameControlVisible := true
 
 				Settings.RadioButtonStateUpdate()
@@ -953,7 +967,7 @@ class Settings
 			try {
 				Switch gcListView.GetText(iRow, Settings.ACTION)
 				{
-					Case "[Default]", FOUR_WAY, EIGHT_WAY, DUAL, DIAGONAL, ROTARY, SPINNER, TRACKBALL:
+					Case "[Default]", TWO_WAY_H, TWO_WAY_V, FOUR_WAY, EIGHT_WAY, ANALOG, DUAL, DIAGONAL, ROTARY, SPINNER, TRACKBALL:
 						sGame := gcListView.GetText(iRow, Settings.ACTION)
 					default: 
 						sGame := ReadListXML.GetXMLMetaInfo(sGamesXMLFile, gcListView.GetText(iRow, Settings.ACTION))["description"]
@@ -1175,6 +1189,11 @@ class Settings
 		IniWrite(gcShowGameInfo_Checkbox.Value, sIniFile, "General", "ShowGameInfo")
 	}
 
+	static GameInfoFontSizeEdit_Change(*)
+	{
+		IniWrite(gcGameInfoFontSizeEdit.Value, sIniFile, "General", "GameInfoFontSize")
+	}
+
 	static ApplicationEdit_Change(*)
 	{
 		IniWrite(gcApplicationEdit.Text, sIniFile, "General", "Application")
@@ -1256,6 +1275,8 @@ class Settings
 		;purge the buffer
 		SDL2.SDL_PumpEvents()
 		SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYBUTTONDOWN)
+		SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYHATMOTION)
+		;SDL2.SDL_FlushEvent(SDL_EventType.SDL_JOYAXISMOTION)
 
 		;Handle button presses via SDL_Event
 		loop
@@ -1272,12 +1293,50 @@ class Settings
 			{
 				switch evt.type {
 					case SDL_EventType.SDL_QUIT: ; Close evt
-					SDL2.SDL_Quit()
-					break			 
+						SDL2.SDL_Quit()
+						break			 
 
 					case SDL_EventType.SDL_JOYBUTTONDOWN: ;, SDL_EventType.SDL_JOYBUTTONUP: ; Joy button evt
 						if (Settings.WriteActionToList(aDevices[mDeviceIndex[evt.jbutton.which]], evt.jbutton.button))
 							break
+
+					case SDL_EventType.SDL_JOYHATMOTION:
+						if (evt.jhat.hatvalue)
+						{
+							Switch evt.jhat.hatvalue
+							{
+								Case SDL_EventType.SDL_HAT_UP:
+									Settings.WriteActionToList(aDevices[mDeviceIndex[evt.jhat.which]], "DPad Up")
+								Case SDL_EventType.SDL_HAT_RIGHT:
+									Settings.WriteActionToList(aDevices[mDeviceIndex[evt.jhat.which]], "DPad Right")
+								Case SDL_EventType.SDL_HAT_DOWN:
+									Settings.WriteActionToList(aDevices[mDeviceIndex[evt.jhat.which]], "DPad Down")
+								Case SDL_EventType.SDL_HAT_LEFT:
+									Settings.WriteActionToList(aDevices[mDeviceIndex[evt.jhat.which]], "DPad Left")
+							}
+
+							break
+						}	
+						
+					/* ;Omit axis handling since it will conflict with
+					case SDL_EventType.SDL_JOYAXISMOTION:
+						if (Abs(evt.jaxis.axisValue) >= 32767)
+						{  
+							sDirection := ""
+
+							Switch evt.jaxis.axis
+							{
+								Case 0, 2:
+									sDirection := evt.jaxis.axisValue > 0 ? "Right" : "Left"
+								Case 1, 3:
+									sDirection := evt.jaxis.axisValue > 0 ? "Down" : "Up" 
+							}
+
+							if (Settings.WriteActionToList(aDevices[mDeviceIndex[evt.jaxis.which]], "Axis " evt.jaxis.axis " " sDirection)) {
+									break
+							}
+						}
+					*/
 				}
 			}
 			SDL2.SDL_Delay(1)
@@ -1639,13 +1698,30 @@ class Settings
 		return iSeq
 	}
 
+	static RefreshList()
+	{
+		Settings.ClearTable()
+		Settings.ReadActionList()
+
+		gcDevices.Value := 1
+		gcAnnunciationEdit.Text := ""
+		gcProfileEdit.Text := ""
+		gcProfileEdit_2.Text := ""
+		gcProfileEdit_3.Text := ""
+		gcProfile_2_Checkbox := 0
+		gcProfile_3_Checkbox := 0
+		Settings.ToggleCheckedState(2, false)
+
+		Settings.Devices_Change()
+	}
+
 	static SetRomInfo()
 	{
 		sYear := sManufacturer := sRom := sVersion := ""
 
 		Switch gcROMDropDown.Text
 		{
-			Case "[Default]", FOUR_WAY, EIGHT_WAY, DUAL, DIAGONAL, ROTARY, SPINNER, TRACKBALL:
+			Case "[Default]", TWO_WAY_H, TWO_WAY_V, FOUR_WAY, EIGHT_WAY, ANALOG, DUAL, DIAGONAL, ROTARY, SPINNER, TRACKBALL:
 				gcROMDropDownGameInfo.Text := ""
 		}
 
@@ -1671,27 +1747,36 @@ class Settings
 			Case "[Default]":
 				gcROMDropDownGameRom.Text := ""
 				gcROMDropDownController.Text := ""
+			Case TWO_WAY_H:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "2-way, horizontal joystick games"
+			Case TWO_WAY_V:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "2-way, vertical joystick games"
 			Case FOUR_WAY:
 				gcROMDropDownGameRom.Text := ""
 				gcROMDropDownController.Text := "4-way joystick games"
 			Case EIGHT_WAY:
 				gcROMDropDownGameRom.Text := ""
 				gcROMDropDownController.Text := "8-way joystick games"
+			Case ANALOG:
+				gcROMDropDownGameRom.Text := ""
+				gcROMDropDownController.Text := "analog joystick games"
 			Case DUAL:
 				gcROMDropDownGameRom.Text := ""
-				gcROMDropDownController.Text := "Dual joystick games"
+				gcROMDropDownController.Text := "dual joystick games"
 			Case DIAGONAL:
 				gcROMDropDownGameRom.Text := ""
 				gcROMDropDownController.Text := "4-way diagonal joystick games"
 			Case ROTARY:
 				gcROMDropDownGameRom.Text := ""
-				gcROMDropDownController.Text := "Rotary joystick games"
+				gcROMDropDownController.Text := "rotary joystick games"
 			Case SPINNER:
 				gcROMDropDownGameRom.Text := ""
-				gcROMDropDownController.Text := "Spinner games"
+				gcROMDropDownController.Text := "spinner games"
 			Case TRACKBALL:
 				gcROMDropDownGameRom.Text := ""
-				gcROMDropDownController.Text := "Trackball games"
+				gcROMDropDownController.Text := "trackball games"
 			default: 
 				gcROMDropDownGameRom.Text := sRom == "" ? sRom : sRom ".zip"
 				sControl := ""
